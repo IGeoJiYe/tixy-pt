@@ -1,4 +1,4 @@
-package com.tixy.api.member.enums;
+package com.tixypt.api.member.enums;
 
 import lombok.Getter;
 import lombok.RequiredArgsConstructor;

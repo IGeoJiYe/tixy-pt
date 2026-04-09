@@ -1,4 +1,4 @@
-package com.tixy.core.security.config;
+package com.tixypt.core.security.config;
 
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;

@@ -1,4 +1,4 @@
-package com.tixy.core.security.dto;
+package com.tixypt.core.security.dto;
 
 import lombok.Builder;
 

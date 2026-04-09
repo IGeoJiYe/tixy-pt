@@ -1,4 +1,4 @@
-package com.tixypt.chatting.entity;
+package com.tixypt.chatting.domain.entity;
 
 import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;

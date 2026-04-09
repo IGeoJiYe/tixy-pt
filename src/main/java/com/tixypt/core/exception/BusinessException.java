@@ -1,4 +1,4 @@
-package com.tixy.core.exception;
+package com.tixypt.core.exception;
 
 import lombok.Getter;
 

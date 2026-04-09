@@ -1,8 +1,8 @@
-package com.tixy.core.security.config;
+package com.tixypt.core.security.config;
 
-import com.tixy.core.security.jwt.JwtAuthenticationEntryPoint;
-import com.tixy.core.security.jwt.JwtAuthenticationFilter;
-import com.tixy.core.security.jwt.JwtTokenProvider;
+import com.tixypt.core.security.jwt.JwtAuthenticationEntryPoint;
+import com.tixypt.core.security.jwt.JwtAuthenticationFilter;
+import com.tixypt.core.security.jwt.JwtTokenProvider;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -23,7 +23,6 @@ public class SecurityConfig {
 
     @Bean
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
-
         http
                 .csrf(csrf -> csrf.disable()) // CSRF 보호 비활성화 (JWT를 사용하므로 불필요)
                 .formLogin(form -> form.disable()) // 기본 폼 로그인 비활성화
@@ -38,12 +37,7 @@ public class SecurityConfig {
                 .authorizeHttpRequests(auth -> auth
                         // ==================== 개발용 허용 ====================
                         .requestMatchers(
-                                "/", "/error", "/actuator/**"
-                        ).permitAll()
-                        .requestMatchers(HttpMethod.POST,
-                                "/api/auth/login",
-                                "/api/auth/signup",
-                                "/api/auth/reissue"          // Refresh Token 재발급
+                                "/", "/error", "/actuator/**", "/ws/**", "/api/chat/**"
                         ).permitAll()
                         .anyRequest().authenticated()
                 )
@@ -51,7 +45,6 @@ public class SecurityConfig {
                         new JwtAuthenticationFilter(jwtTokenProvider),
                         UsernamePasswordAuthenticationFilter.class
                 );
-
         return http.build();
     }
 }

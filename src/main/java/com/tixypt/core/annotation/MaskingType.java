@@ -1,4 +1,4 @@
-package com.tixy.core.annotation;
+package com.tixypt.core.annotation;
 
 public enum MaskingType {
     PASSWORD,

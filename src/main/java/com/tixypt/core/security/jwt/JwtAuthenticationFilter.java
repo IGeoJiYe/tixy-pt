@@ -1,7 +1,7 @@
-package com.tixy.core.security.jwt;
+package com.tixypt.core.security.jwt;
 
-import com.tixy.core.constant.AuthConstants;
-import com.tixy.core.security.dto.LoginUserInfoDto;
+import com.tixypt.core.constant.AuthConstants;
+import com.tixypt.core.security.dto.LoginUserInfoDto;
 import io.jsonwebtoken.ExpiredJwtException;
 import io.jsonwebtoken.MalformedJwtException;
 import io.jsonwebtoken.UnsupportedJwtException;

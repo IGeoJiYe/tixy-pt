@@ -1,4 +1,4 @@
-package com.tixy.core.exception;
+package com.tixypt.core.exception;
 
 /**
  * 분산 락 획득에 실패했을 때 던지는 예외.

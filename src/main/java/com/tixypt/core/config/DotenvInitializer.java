@@ -1,4 +1,4 @@
-package com.tixy.core.config;
+package com.tixypt.core.config;
 
 import io.github.cdimascio.dotenv.Dotenv;
 import lombok.extern.slf4j.Slf4j;

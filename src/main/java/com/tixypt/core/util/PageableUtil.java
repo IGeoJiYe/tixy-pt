@@ -1,4 +1,4 @@
-package com.tixy.core.util;
+package com.tixypt.core.util;
 
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;

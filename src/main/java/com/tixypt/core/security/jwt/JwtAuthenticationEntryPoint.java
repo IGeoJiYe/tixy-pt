@@ -1,9 +1,9 @@
-package com.tixy.core.security.jwt;
+package com.tixypt.core.security.jwt;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.tixy.core.dto.ApiResponse;
-import com.tixy.core.exception.ErrorResponse;
-import com.tixy.core.exception.MemberErrorCode;
+import com.tixypt.core.dto.ApiResponse;
+import com.tixypt.core.exception.ErrorResponse;
+import com.tixypt.core.exception.MemberErrorCode;
 import io.jsonwebtoken.ExpiredJwtException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;

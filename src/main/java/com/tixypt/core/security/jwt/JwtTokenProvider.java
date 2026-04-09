@@ -1,4 +1,4 @@
-package com.tixy.core.security.jwt;
+package com.tixypt.core.security.jwt;
 
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.JwtBuilder;
@@ -23,12 +23,6 @@ public class JwtTokenProvider {
     @Value("${jwt.secret-key}")
     private String secretKeyString; // 대칭키(HS256)용 프로퍼티
 
-    @Value("${jwt.access-token-validity-time}")
-    private long accessTokenValidityInMilliseconds;
-
-    @Value("${jwt.refresh-token-validity-time}")
-    private long refreshTokenValidityInMilliseconds;
-
     private SecretKey key;
 
     @PostConstruct
@@ -42,48 +36,6 @@ public class JwtTokenProvider {
         this.key = Keys.hmacShaKeyFor(keyBytes);
 
         log.info("HS256 대칭키(Secret Key)가 성공적으로 초기화되었습니다.");
-    }
-
-    /**
-     * 회원(User)의 정보를 기반으로 Access Token을 생성합니다.
-     * @param memberId 회원의 고유 식별자 (PK)
-     * @param role 회원의 권한 (ROLE_USER 등)
-     * @return 발급된 Access Token 문자열
-     */
-    public String createAccessToken(Long memberId, String role) {
-        return buildToken(memberId, role, accessTokenValidityInMilliseconds);
-    }
-
-    /**
-     * 회원(User)의 정보를 기반으로 Refresh Token을 생성합니다.
-     * (Refresh Token은 권한 정보 없이 PK만 담는 것이 일반적입니다)
-     * @param memberId 회원의 고유 식별자 (PK)
-     * @return 발급된 Refresh Token 문자열
-     */
-    public String createRefreshToken(Long memberId) {
-        return buildToken(memberId, null, refreshTokenValidityInMilliseconds);
-    }
-
-    /**
-     * 실제 JWT 토큰 생성을 담당하는 내부 헬퍼 메서드
-     */
-    private String buildToken(Long memberId, String role, long validityTimeInMs) {
-        Date now = new Date();
-        Date validity = new Date(now.getTime() + validityTimeInMs);
-
-        JwtBuilder builder = Jwts.builder()
-                .subject(String.valueOf(memberId)) // PK를 Subject로 지정
-                .issuer(ISSUER)                    // 표준 Claim: 토큰 발급자 명시
-                .issuedAt(now)                     // 표준 Claim: 토큰 발행 시간 (iat)
-                .expiration(validity)              // 표준 Claim: 설정된 만료 시간 (exp)
-                .id(UUID.randomUUID().toString())  // 표준 Claim: 토큰 고유 ID (jti)
-                .signWith(key);                    // SecretKey → HS256 자동 적용 (모놀리식 대칭키)
-
-        if (role != null) {
-            builder.claim("role", role); // 부가 정보(Custom Claim) 추가
-        }
-
-        return builder.compact();
     }
 
     /**
@@ -120,9 +72,5 @@ public class JwtTokenProvider {
     public boolean validateToken(String token) {
         parseClaims(token);
         return true;
-    }
-
-    public int getRefreshTokenValidityInSeconds() {
-        return (int) (refreshTokenValidityInMilliseconds / 1000);
     }
 }

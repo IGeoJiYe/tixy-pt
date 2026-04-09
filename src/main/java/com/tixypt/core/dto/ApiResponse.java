@@ -1,8 +1,8 @@
-package com.tixy.core.dto;
+package com.tixypt.core.dto;
 
 
 import com.fasterxml.jackson.annotation.JsonInclude;
-import com.tixy.core.exception.ErrorResponse;
+import com.tixypt.core.exception.ErrorResponse;
 
 
 @JsonInclude(JsonInclude.Include.NON_NULL)

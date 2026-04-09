@@ -1,10 +1,10 @@
-package com.tixy.core.security.resolver;
+package com.tixypt.core.security.resolver;
 
 
-import com.tixy.core.exception.MemberErrorCode;
-import com.tixy.core.exception.MemberException;
-import com.tixy.core.security.annotation.LoginUser;
-import com.tixy.core.security.dto.LoginUserInfoDto;
+import com.tixypt.core.exception.MemberErrorCode;
+import com.tixypt.core.exception.MemberException;
+import com.tixypt.core.security.annotation.LoginUser;
+import com.tixypt.core.security.dto.LoginUserInfoDto;
 import org.springframework.core.MethodParameter;
 import org.springframework.lang.NonNull;
 import org.springframework.lang.Nullable;

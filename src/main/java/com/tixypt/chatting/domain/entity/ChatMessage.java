@@ -1,4 +1,4 @@
-package com.tixypt.chatting.entity;
+package com.tixypt.chatting.domain.entity;
 
 import com.tixypt.api.member.entity.Member;
 import jakarta.persistence.Entity;

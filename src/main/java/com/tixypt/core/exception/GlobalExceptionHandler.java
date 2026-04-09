@@ -1,6 +1,6 @@
-package com.tixy.core.exception;
+package com.tixypt.core.exception;
 
-import com.tixy.core.dto.ApiResponse;
+import com.tixypt.core.dto.ApiResponse;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.extern.slf4j.Slf4j;
 import org.hibernate.exception.LockAcquisitionException;

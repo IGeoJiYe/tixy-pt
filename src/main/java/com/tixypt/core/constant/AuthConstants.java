@@ -1,4 +1,4 @@
-package com.tixy.core.constant;
+package com.tixypt.core.constant;
 
 public class AuthConstants {
 

@@ -51,7 +51,7 @@ services:
       dockerfile: Dockerfile       # 프로젝트 루트의 Dockerfile 참조
     container_name: spring-compose
     ports:
-      - "8080:8080"
+      - "8081:8081"
     environment:
       - SPRING_DATASOURCE_URL=jdbc:mysql://mysql:3306/tixy
       - SPRING_DATASOURCE_USERNAME=root

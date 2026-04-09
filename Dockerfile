@@ -21,6 +21,6 @@ WORKDIR /app
 # 와일드카드(*)를 사용하면 버전이 바뀌어도 Dockerfile 수정 없이 대응 가능하다.
 COPY build/libs/*.jar app.jar
 
-EXPOSE 8080
+EXPOSE 8081
 
 ENTRYPOINT ["java", "-jar", "app.jar"]

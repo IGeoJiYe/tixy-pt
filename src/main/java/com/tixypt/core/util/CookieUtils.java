@@ -1,6 +1,6 @@
-package com.tixy.core.util;
+package com.tixypt.core.util;
 
-import com.tixy.core.constant.AuthConstants;
+import com.tixypt.core.constant.AuthConstants;
 import jakarta.servlet.http.Cookie;
 import org.springframework.stereotype.Component;
 

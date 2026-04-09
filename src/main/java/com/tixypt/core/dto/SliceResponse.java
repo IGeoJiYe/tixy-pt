@@ -1,4 +1,4 @@
-package com.tixy.core.dto;
+package com.tixypt.core.dto;
 
 import java.util.List;
 
