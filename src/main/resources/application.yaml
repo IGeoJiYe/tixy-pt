@@ -22,6 +22,15 @@ spring:
       hibernate:
         format_sql: false
         show_sql: false
+  data:
+    redis:
+      host: ${REDIS_HOST:localhost}
+      port: 6379
+      lettuce:
+        pool:
+          max-active: 8
+          max-idle: 8
+          min-idle: 1
 
 jwt:
   secret-key: ${JWT_SECRET_KEY}
