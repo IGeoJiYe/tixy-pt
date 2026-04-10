@@ -18,8 +18,8 @@ import java.util.List;
 public class TestDataInit implements ApplicationRunner {
 
     private static final List<MemberSeed> MEMBER_SEEDS = List.of(
-            new MemberSeed("Alice"),
-            new MemberSeed("Bob")
+            new MemberSeed("Alice", "010-0000-0000"),
+            new MemberSeed("Bob", "010-0000-0001")
     );
 
     private final MemberRepository memberRepository;
@@ -41,6 +41,7 @@ public class TestDataInit implements ApplicationRunner {
                     .email(seed.name() + "@test.com")
                     .password(password)
                     .name(seed.name())
+                    .phone(seed.phone())
                     .build();
 
             Member savedMember = memberRepository.save(member);
@@ -51,7 +52,8 @@ public class TestDataInit implements ApplicationRunner {
     }
 
     private record MemberSeed(
-            String name
+            String name,
+            String phone
     ) {
     }
 }

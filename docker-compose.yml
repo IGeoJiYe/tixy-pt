@@ -20,7 +20,8 @@ version: '3.8'
 services:
   mysql:
     image: mysql:8.0
-    container_name: mysql-compose
+    container_name: mysql-ceompose
+    restart: unless-stopped
     environment:
       MYSQL_ROOT_PASSWORD: 12345678
       MYSQL_DATABASE: tixy
@@ -30,11 +31,16 @@ services:
       test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
       interval: 5s
       retries: 5
+    volumes:
+      - mysql_data:/var/lib/mysql
+    networks:
+      - spring-net
 
   # ── Redis 서버 ────────────────────────────────────────────────
   redis:
     image: redis:8-alpine          # 2026년 기준 최신 안정판 (캐시 기능은 버전 무관)
     container_name: redis-compose
+    restart: unless-stopped
     ports:
       - "6379:6379"                # 호스트:컨테이너 - IntelliJ에서도 localhost:6379 로 접근 가능
     healthcheck:
@@ -42,31 +48,13 @@ services:
       interval: 5s
       timeout: 3s
       retries: 5
+    networks:
+      - spring-net
 
-  # ── Spring Boot 앱 (패턴 A 풀스택 시 사용) ─────────────────────
-  # 패턴 B에서는 이 서비스를 주석 처리하고 앱은 IDE에서 기동한다.
-  app:
-    build:
-      context: .
-      dockerfile: Dockerfile       # 프로젝트 루트의 Dockerfile 참조
-    container_name: spring-compose
-    ports:
-      - "8081:8081"
-    environment:
-      - SPRING_DATASOURCE_URL=jdbc:mysql://mysql:3306/tixy
-      - SPRING_DATASOURCE_USERNAME=root
-      - SPRING_DATASOURCE_PASSWORD=12345678
-      - SPRING_JPA_HIBERNATE_DDL_AUTO=update
-      # Compose 네트워크 안에서는 서비스 이름(redis)이 곧 호스트명이다.
-      # IDE에서 직접 실행할 때와 달리 localhost가 아니라 redis로 지정해야 한다.
-      - SPRING_PROFILES_ACTIVE=docker
-      - SPRING_DATA_REDIS_HOST=redis   # application-docker.yml 의 ${SPRING_DATA_REDIS_HOST}
-      - JWT_SECRET_KEY=${JWT_SECRET_KEY}
-    depends_on:
-      mysql:
-        condition: service_healthy
-      redis:
-        condition: service_healthy     # Redis 가 PONG 응답할 때까지 앱 기동 대기
-    volumes:
-      # 업로드 파일을 컨테이너 밖(호스트)에 보관해 재시작 시에도 유지된다.
-      - ${HOME}/tixy/uploads:/root/tixy/uploads
+volumes:
+  mysql_data:
+
+networks:
+  spring-net:
+    name: spring-net
+    external: true

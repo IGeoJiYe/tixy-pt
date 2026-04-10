@@ -16,12 +16,8 @@
 # ================================================================
 set -e   # 중간 명령 실패 시 즉시 종료 (bootJar 실패 → compose up 건너뜀)
 
-echo "=== [1/2] Gradle bootJar 빌드 시작 ==="
-./gradlew bootJar
-
-echo "=== [2/2] Docker Compose 풀스택 기동 ==="
+echo "=== Docker Compose 풀스택 기동 ==="
 docker compose up -d --build
-
 
 echo "=== 기동 완료 — 앱 로그 출력 시작 (중지: Ctrl+C) ==="
 docker compose logs -f app

@@ -10,7 +10,7 @@ spring:
       max-request-size: 100MB
   datasource:
     driver-class-name: com.mysql.cj.jdbc.Driver
-    url: ${DB_URL:jdbc:mysql://localhost:3306/tixy}
+    url: ${DB_URL:jdbc:mysql://localhost:3307/tixy}
     username: ${DB_USERNAME:root}
     password: ${DB_PASSWORD:12345678}
   jpa:

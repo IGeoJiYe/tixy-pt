@@ -28,15 +28,19 @@ public class Member extends BaseEntity {
     @Column(nullable = false, length = 50)
     private String name;
 
+    @Column(unique = true, length = 20)
+    private String phone;
+
     @Enumerated(EnumType.STRING) // Enum은 반드시 STRING으로! (ORDINAL 금지: 순서 바뀌면 DB 꼬임)
     @Column(nullable = false)
     private MemberRole role;
 
     @Builder
-    private Member(String email, String password, String name) {
+    private Member(String email, String password, String name, String phone) {
         this.email = email;
         this.password = password;
         this.name = name;
+        this.phone = phone;
         this.role = MemberRole.USER; // 기본값 강제 세팅: 가입 시엔 무조건 USER
     }
 }
