@@ -27,6 +27,10 @@ public class SupportRoom extends BaseEntity {
     @Column(name = "counselor_user_id")
     private Long counselorUserId;
 
+    // 마지막으로 이 문의방을 담당했던 상담원 userId, 종료나 배정 해제로 현재 담당자가 비어도 종료 이력 조회 기준으로 남겨 둠
+    @Column(name = "last_counselor_user_id")
+    private Long lastCounselorUserId;
+
     // 방이 열려 있는지 닫혔는지 보는 상태값
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 20)
@@ -52,6 +56,7 @@ public class SupportRoom extends BaseEntity {
     @Column(name = "customer_last_read_at")
     private LocalDateTime customerLastReadAt;
 
+    // 상담원이 마지막으로 읽음 처리한 시각
     @Column(name = "counselor_last_read_at")
     private LocalDateTime counselorLastReadAt;
 
@@ -64,6 +69,7 @@ public class SupportRoom extends BaseEntity {
     private SupportRoom(
             Long customerUserId,
             Long counselorUserId,
+            Long lastCounselorUserId,
             SupportRoomStatus status,
             Long lastMessageId,
             LocalDateTime lastMessageAt,
@@ -75,6 +81,7 @@ public class SupportRoom extends BaseEntity {
     ) {
         this.customerUserId = customerUserId;
         this.counselorUserId = counselorUserId;
+        this.lastCounselorUserId = lastCounselorUserId;
         this.status = status;
         this.lastMessageId = lastMessageId;
         this.lastMessageAt = lastMessageAt;
@@ -83,6 +90,16 @@ public class SupportRoom extends BaseEntity {
         this.customerLastReadAt = customerLastReadAt;
         this.counselorLastReadAt = counselorLastReadAt;
         this.counselorLastActiveAt = counselorLastActiveAt;
+    }
+
+    public static SupportRoom open(Long customerUserId, Long counselorUserId) {
+        // 문의방 생성 때 기본 상태는 open, counselorUserId가 함께 들어오면 생성과 동시에 담당 배정된 방으로 봄
+        return SupportRoom.builder()
+                .customerUserId(customerUserId)
+                .counselorUserId(counselorUserId)
+                .lastCounselorUserId(counselorUserId)
+                .status(SupportRoomStatus.OPEN)
+                .build();
     }
 
 }
