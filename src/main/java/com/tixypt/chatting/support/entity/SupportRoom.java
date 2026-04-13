@@ -102,4 +102,45 @@ public class SupportRoom extends BaseEntity {
                 .build();
     }
 
+    public void touchCounselorActivity(LocalDateTime activeAt) {
+        // 실제 담당 상담원이 있는 방에서만 활동 시각을 갱신
+        if (this.counselorUserId != null) {
+            this.counselorLastActiveAt = activeAt;
+        }
+    }
+
+    public void releaseCounselor() {
+        // 배정 해제 시 현재 담당 정보만 비우고 마지막 담당 이력은 유지
+        this.counselorUserId = null;
+        this.counselorLastReadMessageId = null;
+        this.counselorLastReadAt = null;
+        this.counselorLastActiveAt = null;
+    }
+
+    public void forceAssignCounselor(Long counselorUserId, LocalDateTime activeAt) {
+        // 재배정 할 때 현재 담당자랑 마지막 담당 이력을 새 삳담원으로 함께 맞춤
+        this.counselorUserId = counselorUserId;
+        this.lastCounselorUserId = counselorUserId;
+        this.counselorLastReadMessageId = null;
+        this.counselorLastReadAt = null;
+        this.counselorLastActiveAt = activeAt;
+    }
+
+    public boolean close() {
+        if (this.status == SupportRoomStatus.CLOSED) {
+            return false;
+        }
+
+        // 종료 직전 담당자를 lastCounselorUserId로 남겨 둬야 이후에 내가 처리했던 종료 문의 이력을 다시 조회할 수 있음
+        if (this.counselorUserId != null) {
+            this.lastCounselorUserId = this.counselorUserId;
+        }
+
+        this.status = SupportRoomStatus.CLOSED;
+        this.counselorUserId = null;
+        this.counselorLastReadMessageId = null;
+        this.counselorLastReadAt = null;
+        this.counselorLastActiveAt = null;
+        return true;
+    }
 }

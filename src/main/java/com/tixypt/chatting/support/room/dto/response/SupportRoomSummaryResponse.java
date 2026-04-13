@@ -1,4 +1,4 @@
-package com.tixypt.chatting.support.room.dto;
+package com.tixypt.chatting.support.room.dto.response;
 
 import com.tixypt.chatting.support.entity.SupportRoom;
 import com.tixypt.chatting.support.entity.SupportRoomStatus;

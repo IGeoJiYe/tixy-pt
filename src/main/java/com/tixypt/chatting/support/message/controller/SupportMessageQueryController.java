@@ -1,7 +1,7 @@
 package com.tixypt.chatting.support.message.controller;
 
-import com.tixypt.chatting.support.message.dto.SupportMessageQueryRequest;
-import com.tixypt.chatting.support.message.dto.SupportMessageSliceResponse;
+import com.tixypt.chatting.support.message.dto.request.SupportMessageQueryRequest;
+import com.tixypt.chatting.support.message.dto.response.SupportMessageSliceResponse;
 import com.tixypt.chatting.support.message.service.SupportMessageService;
 import com.tixypt.core.dto.ApiResponse;
 import com.tixypt.core.security.annotation.LoginUser;

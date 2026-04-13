@@ -1,9 +1,9 @@
 package com.tixypt.chatting.support.room.controller;
 
-import com.tixypt.chatting.support.room.dto.CreateSupportRoomResponse;
-import com.tixypt.chatting.support.room.dto.SupportRoomDetailResponse;
-import com.tixypt.chatting.support.room.dto.SupportRoomSliceQueryRequest;
-import com.tixypt.chatting.support.room.dto.SupportRoomSummaryResponse;
+import com.tixypt.chatting.support.room.dto.response.CreateSupportRoomResponse;
+import com.tixypt.chatting.support.room.dto.response.SupportRoomDetailResponse;
+import com.tixypt.chatting.support.room.dto.request.SupportRoomSliceQueryRequest;
+import com.tixypt.chatting.support.room.dto.response.SupportRoomSummaryResponse;
 import com.tixypt.chatting.support.room.service.SupportRoomService;
 import com.tixypt.core.dto.ApiResponse;
 import com.tixypt.core.dto.SliceResponse;

@@ -1,4 +1,4 @@
-package com.tixypt.chatting.support.message.dto;
+package com.tixypt.chatting.support.message.dto.request;
 
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;

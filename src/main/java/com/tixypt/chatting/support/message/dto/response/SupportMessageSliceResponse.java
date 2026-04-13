@@ -1,4 +1,4 @@
-package com.tixypt.chatting.support.message.dto;
+package com.tixypt.chatting.support.message.dto.response;
 
 import java.util.List;
 

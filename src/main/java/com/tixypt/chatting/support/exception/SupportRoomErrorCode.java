@@ -14,7 +14,8 @@ public enum SupportRoomErrorCode implements ErrorCode {
     ROOM_ALREADY_CLOSED(HttpStatus.CONFLICT, "SR008", "이미 종료된 문의방입니다."),
     INVALID_MESSAGE_CONTENT(HttpStatus.BAD_REQUEST, "SR004", "유효하지 않은 메시지 내용입니다."),
     INVALID_MESSAGE_CURSOR(HttpStatus.BAD_REQUEST, "SR006", "유효하지 않은 메시지 조회 커서입니다."),
-    INVALID_MESSAGE_PAGE_SIZE(HttpStatus.BAD_REQUEST, "SR007", "유효하지 않은 메시지 조회 크기입니다.");
+    INVALID_MESSAGE_PAGE_SIZE(HttpStatus.BAD_REQUEST, "SR007", "유효하지 않은 메시지 조회 크기입니다."),
+    INVALID_ROOM_ASSIGNMENT(HttpStatus.BAD_REQUEST, "SR005", "유효하지 않은 문의방 배정 요청입니다.");
 
 
     private final HttpStatus status;

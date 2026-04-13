@@ -1,4 +1,4 @@
-package com.tixypt.chatting.support.message.dto;
+package com.tixypt.chatting.support.message.dto.response;
 
 import com.tixypt.chatting.support.entity.SupportMessage;
 import com.tixypt.chatting.support.entity.SupportMessageSenderType;
