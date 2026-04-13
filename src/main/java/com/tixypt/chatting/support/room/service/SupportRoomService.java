@@ -68,6 +68,9 @@ public class SupportRoomService {
         return SupportRoomDetailResponse.from(room);
     }
 
+
+
+
     private CreateSupportRoomResponse creatNewOpenRoom(Long customerUserId) {
         // 고객 방 생성 시점에는 상담원이 정해지지 않았으니까 counselor는 null로 둔다
         SupportRoom room = supportRoomRepository.save(SupportRoom.open(customerUserId, null));
