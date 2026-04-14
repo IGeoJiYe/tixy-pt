@@ -127,11 +127,23 @@ public class SupportRoomService {
     private long calculateUnreadCount(SupportRoom room, Member loginUser) {
         // 고객은 상담원/ai 쪽 메시지를, 상담원은 고객/ai 쪽 메시지 기준으로 센다
         if (isCounselor(loginUser)) {
-            long lastReadMessageId = room.getCounselorLastReadMessageId() == null ? 0L : room.getCounselorLastReadMessageId();
-            return supportMessageRepository.countUnreadForCounselor(room.getId(), lastReadMessageId, loginUser.getId());
+            long lastReadMessageId = room.getCounselorLastReadMessageId() == null
+                    ? 0L
+                    : room.getCounselorLastReadMessageId();
+            return supportMessageRepository.countUnreadForCounselor(
+                    room.getId(),
+                    lastReadMessageId,
+                    loginUser.getId()
+            );
         }
 
-        long lastReadMessageId = room.getCustomerLastReadMessageId() == null ? 0L : room.getCustomerLastReadMessageId();
-        return supportMessageRepository.countUnreadForCustomer(room.getId(), lastReadMessageId, loginUser.getId());
+        long lastReadMessageId = room.getCustomerLastReadMessageId() == null
+                ? 0L
+                : room.getCustomerLastReadMessageId();
+        return supportMessageRepository.countUnreadForCustomer(
+                room.getId(),
+                lastReadMessageId,
+                loginUser.getId()
+        );
     }
 }

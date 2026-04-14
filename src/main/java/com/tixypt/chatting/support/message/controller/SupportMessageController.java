@@ -1,6 +1,6 @@
 package com.tixypt.chatting.support.message.controller;
 
-import com.tixypt.chatting.support.message.dto.request.SupportMessageEvent;
+import com.tixypt.chatting.support.message.dto.event.SupportMessageEvent;
 import com.tixypt.chatting.support.message.dto.request.SupportSendMessageRequest;
 import com.tixypt.chatting.support.message.service.SupportMessageService;
 import com.tixypt.chatting.support.websocket.LocalSupportEventBroadcaster;

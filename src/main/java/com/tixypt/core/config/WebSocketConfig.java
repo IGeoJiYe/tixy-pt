@@ -22,8 +22,10 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
 
     @Override
     public void configureMessageBroker(MessageBrokerRegistry registry) {
+        // 방 구독 채널이랑 사용자 개인 unread 동기화 채널을 simple broker가 직접 처리하게 함께 연다
         registry.enableSimpleBroker(
-                SupportStompDestination.SUBSCRIBE_PREFIX
+                SupportStompDestination.SUBSCRIBE_PREFIX,
+                SupportStompDestination.BROKER_USER_QUEUE_PREFIX
         );
 
         registry.setApplicationDestinationPrefixes(SupportStompDestination.PUBLISH_PREFIX);

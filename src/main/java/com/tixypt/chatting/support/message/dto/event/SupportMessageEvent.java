@@ -1,4 +1,4 @@
-package com.tixypt.chatting.support.message.dto.request;
+package com.tixypt.chatting.support.message.dto.event;
 
 import com.tixypt.chatting.support.entity.SupportMessage;
 import com.tixypt.chatting.support.entity.SupportMessageSenderType;

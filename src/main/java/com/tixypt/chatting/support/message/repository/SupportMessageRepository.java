@@ -52,4 +52,8 @@ public interface SupportMessageRepository extends JpaRepository<SupportMessage, 
             @Param("lastReadMessageId") Long lastReadMessageId,
             @Param("counselorUserId") Long counselorUserId
     );
+
+    // 읽은 처리 요청의 messageId가 실제로 해당 문의방 메시지인지 검증
+    // 다른 방 메시지를 lastReadMessageId로 보내는 잘못된 요청을 걸러내기 위함
+    boolean existsByIdAndRoomId(Long lastReadMessageId, Long roomId);
 }

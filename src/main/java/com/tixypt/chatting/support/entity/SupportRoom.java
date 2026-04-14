@@ -149,4 +149,31 @@ public class SupportRoom extends BaseEntity {
         this.lastMessageId = lastMessageId;
         this.lastMessageAt = lastMessageAt;
     }
+
+    public boolean markCounselorRead(Long lastReadMessageId, LocalDateTime readAt) {
+        // 고객 읽음 커서는 뒤로 가지 않고 앞으로만 움직여야 하기 때문에 더 최신 메시지일 때만 마지막 읽음 위치 갱신
+        if (!shouldAdvance(this.counselorLastReadMessageId, lastReadMessageId)) {
+            return false;
+        }
+
+        this.counselorLastReadMessageId = lastReadMessageId;
+        this.counselorLastReadAt = readAt;
+        return true;
+    }
+
+    public boolean markCustomerRead(Long lastReadMessageId, LocalDateTime readAt) {
+        // 상담원 읽음 커서도 똑같이
+        if (!shouldAdvance(this.customerLastReadMessageId, lastReadMessageId)) {
+            return false;
+        }
+
+        this.customerLastReadMessageId = lastReadMessageId;
+        this.customerLastReadAt = readAt;
+        return true;
+    }
+
+    private boolean shouldAdvance(Long currentLastReadMessageId, Long newLastReadMessageId) {
+        // 읽음 위치는 과거 메시지로 되돌아가면 안 되니까 현재 값보다 앞선 messageId만 똑바른 갱신으로 봄
+        return currentLastReadMessageId == null || newLastReadMessageId > currentLastReadMessageId;
+    }
 }

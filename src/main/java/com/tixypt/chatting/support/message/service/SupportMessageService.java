@@ -9,7 +9,7 @@ import com.tixypt.chatting.support.entity.SupportRoom;
 import com.tixypt.chatting.support.entity.SupportRoomStatus;
 import com.tixypt.chatting.support.exception.SupportRoomErrorCode;
 import com.tixypt.chatting.support.exception.SupportRoomException;
-import com.tixypt.chatting.support.message.dto.request.SupportMessageEvent;
+import com.tixypt.chatting.support.message.dto.event.SupportMessageEvent;
 import com.tixypt.chatting.support.message.dto.response.SupportMessageResponse;
 import com.tixypt.chatting.support.message.dto.response.SupportMessageSliceResponse;
 import com.tixypt.chatting.support.message.repository.SupportMessageRepository;
