@@ -4,9 +4,12 @@ import com.tixypt.api.member.entity.Member;
 import com.tixypt.api.member.enums.MemberRole;
 import com.tixypt.api.member.service.MemberService;
 import com.tixypt.chatting.support.entity.SupportMessage;
+import com.tixypt.chatting.support.entity.SupportMessageSenderType;
 import com.tixypt.chatting.support.entity.SupportRoom;
+import com.tixypt.chatting.support.entity.SupportRoomStatus;
 import com.tixypt.chatting.support.exception.SupportRoomErrorCode;
 import com.tixypt.chatting.support.exception.SupportRoomException;
+import com.tixypt.chatting.support.message.dto.request.SupportMessageEvent;
 import com.tixypt.chatting.support.message.dto.response.SupportMessageResponse;
 import com.tixypt.chatting.support.message.dto.response.SupportMessageSliceResponse;
 import com.tixypt.chatting.support.message.repository.SupportMessageRepository;
@@ -15,7 +18,9 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.util.StringUtils;
 
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -27,6 +32,7 @@ import java.util.Objects;
 public class SupportMessageService {
 
     private static final int DEFAULT_MESSAGE_QUERY_LIMIT = 30;
+    private static final int MAX_CONTENT_LENGTH = 1000;
 
     private final SupportRoomRepository supportRoomRepository;
     private final SupportMessageRepository supportMessageRepository;
@@ -68,7 +74,60 @@ public class SupportMessageService {
         return new SupportMessageSliceResponse(responses, hasNext, nextCursor);
     }
 
+    // 발신자 구분은 이후에 화면 표시랑 권한 흐름의 기준이 되니까 사용자 역할을 메시지 저장 시점에 확정
+    @Transactional
+    public SupportMessageEvent sendMessage(Long loginUserId, Long roomId, String content) {
+        Member loginUser = memberService.findById(loginUserId);
+        SupportRoom room = supportRoomRepository.findById(roomId)
+                .orElseThrow(() -> new SupportRoomException(SupportRoomErrorCode.ROOM_NOT_FOUND));
 
+        validateRoomAccess(loginUser, room);
+        validateRoomWritable(room);
+
+        if (isCounselor(loginUser)) {
+            // 상담원이 실제로 응답한 시점을 방 활동 시각으로 함께 남긴다.
+            room.touchCounselorActivity(LocalDateTime.now());
+        }
+
+        String normalizedContent = normalizeContent(content);
+
+        SupportMessage savedMessage = supportMessageRepository.save(
+                SupportMessage.text(room, loginUserId, senderType(loginUser), normalizedContent)
+        );
+
+        room.updateLastMessage(savedMessage.getId(), savedMessage.getCreatedAt());
+        return SupportMessageEvent.from(savedMessage);
+    }
+
+
+
+
+    private SupportMessageSenderType senderType(Member loginUser) {
+        return isCounselor(loginUser)
+                ? SupportMessageSenderType.COUNSELOR
+                : SupportMessageSenderType.USER;
+    }
+
+    // 공백 메시지를 막고 저장 가능한 본문 길이만 허용해서 실시간 송신 경로에서도 동일한 메시지 입력 규칙 강제
+    private String normalizeContent(String content) {
+        if (!StringUtils.hasText(content)) {
+            throw new SupportRoomException(SupportRoomErrorCode.INVALID_MESSAGE_CONTENT);
+        }
+
+        String normalizedContent = content.trim();
+        if (!StringUtils.hasText(normalizedContent) || normalizedContent.length() > MAX_CONTENT_LENGTH) {
+            throw new SupportRoomException(SupportRoomErrorCode.INVALID_MESSAGE_CONTENT);
+        }
+        return normalizedContent;
+    }
+
+
+    // 종료된 문의방은 이력 조회만 가능하고 새 메시지는 받지 않도록 막아서 닫힌 방 상태가 실시간 송신으로 다시 깨지지 않게 함
+    private void validateRoomWritable(SupportRoom room) {
+        if (room.getStatus() == SupportRoomStatus.CLOSED) {
+            throw new SupportRoomException(SupportRoomErrorCode.ROOM_ALREADY_CLOSED);
+        }
+    }
 
     // beforeMessageId가 없으면 최신 페이지를 조회하고 있으면 해당 메시지보다 과거 메시지만 이어서 조회
     private List<SupportMessage> fetchMessages(Long roomId, Long beforeMessageId, PageRequest pageRequest) {
@@ -77,7 +136,6 @@ public class SupportMessageService {
         }
         return supportMessageRepository.findByRoomIdAndIdLessThanOrderByIdDesc(roomId, beforeMessageId, pageRequest);
     }
-
 
     // 고객은 자신의 문의방만 조회할 수 있고 상담사는 현재 자신이 담당 중인 방만 조회할 수 있음
     private void validateRoomAccess(Member loginUser, SupportRoom room) {
@@ -92,7 +150,6 @@ public class SupportMessageService {
             throw new SupportRoomException(SupportRoomErrorCode.ROOM_ACCESS_DENIED);
         }
     }
-
 
     private boolean isCounselor(Member loginUser) {
         return loginUser.getRole() == MemberRole.ADMIN;

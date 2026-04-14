@@ -143,4 +143,10 @@ public class SupportRoom extends BaseEntity {
         this.counselorLastActiveAt = null;
         return true;
     }
+
+    public void updateLastMessage(Long lastMessageId, LocalDateTime lastMessageAt) {
+        // 방 목록 정렬이랑 미리보기에 쓰는 마지막 메시지 정보를 함께 갱신
+        this.lastMessageId = lastMessageId;
+        this.lastMessageAt = lastMessageAt;
+    }
 }
