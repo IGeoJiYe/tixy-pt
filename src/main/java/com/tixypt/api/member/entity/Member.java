@@ -36,11 +36,11 @@ public class Member extends BaseEntity {
     private MemberRole role;
 
     @Builder
-    private Member(String email, String password, String name, String phone) {
+    private Member(String email, String password, String name, String phone, MemberRole role) {
         this.email = email;
         this.password = password;
         this.name = name;
         this.phone = phone;
-        this.role = MemberRole.USER; // 기본값 강제 세팅: 가입 시엔 무조건 USER
+        this.role = role == null ? MemberRole.USER : role;
     }
 }
