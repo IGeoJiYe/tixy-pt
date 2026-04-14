@@ -37,7 +37,7 @@ public class SecurityConfig {
                 .authorizeHttpRequests(auth -> auth
                         // ==================== 개발용 허용 ====================
                         .requestMatchers(
-                                "/", "/error", "/actuator/**", "/ws/**", "/api/chat/**"
+                                "/", "/error", "/actuator/**", "/ws/**", "/api/chat/**", "/debug/**", "/favicon.ico"
                         ).permitAll()
                         .anyRequest().authenticated()
                 )

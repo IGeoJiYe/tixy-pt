@@ -67,7 +67,7 @@ public class SupportAuthChannelInterceptor implements ChannelInterceptor {
 
         if (userId == null || !StringUtils.hasText(role)) {
             log.warn("STOMP CONNECT 인증 실패: 토큰에 userId 또는 role 정보가 없습니다.");
-            throw new BadCredentialsException("STOMP CONNECT 초큰에 필수 인증 정보가 없습니다.");
+            throw new BadCredentialsException("STOMP CONNECT 토큰에 필수 인증 정보가 없습니다.");
         }
 
         SupportStompPrincipal principal = new SupportStompPrincipal(userId, role);

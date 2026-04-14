@@ -1,0 +1,289 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="color-scheme" content="light only">
+    <link rel="icon" href="data:,">
+    <title>Tixy 지원 채팅 디버그 콘솔</title>
+    <link rel="stylesheet" href="./support-chat.css">
+</head>
+<body>
+<div class="page-shell">
+    <header class="hero">
+        <div class="hero-copy">
+            <p class="eyebrow">DEV / DEBUG ONLY</p>
+            <h1>Tixy 지원 채팅 디버그 콘솔</h1>
+            <p class="hero-description">
+                별도 프론트 없이 브라우저에서 바로 지원 채팅 REST와 STOMP 계약을 검증하는 개발 전용 콘솔입니다.
+                room 상태, 메시지, 읽음, AI 응답과 운영 제어 흐름까지 한 화면에서 확인할 수 있습니다.
+            </p>
+        </div>
+        <div class="hero-warning">
+            <strong>개발 전용 페이지</strong>
+            <span>운영 환경에서는 이 경로를 외부에 노출하지 않는 편이 안전합니다.</span>
+        </div>
+    </header>
+
+    <section class="contract-grid">
+        <article class="contract-card">
+            <span class="contract-label">WebSocket Endpoint</span>
+            <code id="endpoint-value">/ws/support</code>
+        </article>
+        <article class="contract-card">
+            <span class="contract-label">Publish Prefix</span>
+            <code id="publish-prefix-value">/pub/support/v1</code>
+        </article>
+        <article class="contract-card">
+            <span class="contract-label">Subscribe Prefix</span>
+            <code id="subscribe-prefix-value">/sub/support/v1</code>
+        </article>
+        <article class="contract-card">
+            <span class="contract-label">User Queue Prefix</span>
+            <code id="user-queue-prefix-value">/user/queue/support/v1</code>
+        </article>
+    </section>
+
+    <section class="mode-switch">
+        <div class="mode-copy">
+            <strong>콘솔 모드</strong>
+            <span class="meta-text">
+                USER는 고객 흐름, ADMIN은 대기열 조회와 방 배정, 종료 같은 운영 흐름을 테스트할 때 사용합니다.
+            </span>
+        </div>
+        <div class="mode-toggle" role="tablist" aria-label="debug mode">
+            <button class="mode-button is-active" id="user-mode-button" type="button">USER</button>
+            <button class="mode-button" id="admin-mode-button" type="button">ADMIN</button>
+        </div>
+    </section>
+
+    <main class="workspace">
+        <aside class="control-rail">
+            <section class="panel">
+                <div class="panel-header">
+                    <h2>연결</h2>
+                    <span class="status-chip is-idle" id="connection-status">연결 안 됨</span>
+                </div>
+                <p class="meta-text">JWT를 넣고 Connect를 누르면 STOMP 연결을 시작합니다.</p>
+                <label class="field">
+                    <span>JWT</span>
+                    <textarea id="jwt-input" rows="5" placeholder="Bearer 없이 JWT 본문만 붙여 넣으세요"></textarea>
+                </label>
+                <label class="checkbox-row">
+                    <input type="checkbox" id="save-jwt-toggle">
+                    <span>브라우저에 JWT 저장</span>
+                </label>
+                <div class="button-row">
+                    <button class="button primary" id="connect-button">Connect</button>
+                    <button class="button ghost" id="disconnect-button">Disconnect</button>
+                </div>
+                <div class="button-row">
+                    <button class="button subtle" id="load-jwt-button">저장한 JWT 불러오기</button>
+                    <button class="button subtle" id="delete-jwt-button">저장한 JWT 삭제</button>
+                </div>
+            </section>
+
+            <section class="panel">
+                <div class="panel-header">
+                    <h2>방 구독</h2>
+                    <span class="status-chip is-muted" id="subscription-status">구독 없음</span>
+                </div>
+                <p class="meta-text">roomId를 넣고 Subscribe를 누르면 메시지와 읽음 이벤트를 같은 화면에서 받습니다.</p>
+                <label class="field">
+                    <span>roomId</span>
+                    <input type="number" id="room-id-input" placeholder="예: 1">
+                </label>
+                <div class="destination-list">
+                    <div>
+                        <span>메시지 구독 경로</span>
+                        <code id="message-destination-preview">/sub/support/v1/rooms/{roomId}</code>
+                    </div>
+                    <div>
+                        <span>읽음 구독 경로</span>
+                        <code id="read-destination-preview">/sub/support/v1/rooms/{roomId}/read</code>
+                    </div>
+                    <div>
+                        <span>개인 unread 경로</span>
+                        <code>/user/queue/support/v1/read</code>
+                    </div>
+                </div>
+                <div class="button-row">
+                    <button class="button primary" id="subscribe-button">Subscribe</button>
+                    <button class="button ghost" id="unsubscribe-button">Unsubscribe</button>
+                </div>
+            </section>
+
+            <section class="panel">
+                <div class="panel-header">
+                    <h2>현재 방 상태</h2>
+                    <span class="status-chip is-muted" id="room-status">상태 미확인</span>
+                </div>
+                <p class="meta-text" id="room-status-summary">
+                    방 생성, 내 문의방 목록 조회, 문의방 종료, 큐 이벤트 수신 뒤에 현재 roomId의 OPEN/CLOSED 상태를 바로 확인합니다.
+                </p>
+            </section>
+
+            <section class="panel mode-panel" id="admin-mode-panel" hidden>
+                <div class="panel-header">
+                    <h2>관리자 도구</h2>
+                    <span class="status-chip is-muted" id="queue-subscription-status">큐 미구독</span>
+                </div>
+                <p class="meta-text">ADMIN 토큰으로 대기열 조회, 방 배정, 배정 해제, 재배정, 종료 흐름을 검증합니다.</p>
+                <div class="destination-list">
+                    <div>
+                        <span>큐 구독 경로</span>
+                        <code>/sub/support/v1/queue</code>
+                    </div>
+                </div>
+                <label class="field">
+                    <span>targetCounselorUserId</span>
+                    <input type="number" id="reassign-target-user-id-input" placeholder="예: 2">
+                </label>
+                <div class="button-stack">
+                    <button class="button ghost wide" id="subscribe-queue-button">큐 구독</button>
+                    <button class="button ghost wide" id="unsubscribe-queue-button">큐 구독 해제</button>
+                    <button class="button subtle wide" id="fetch-queue-rooms-button">대기열 조회</button>
+                    <button class="button subtle wide" id="fetch-closed-rooms-button">내 종료 이력 조회</button>
+                    <button class="button subtle wide" id="claim-room-button">방 배정</button>
+                    <button class="button subtle wide" id="release-room-button">방 배정 해제</button>
+                    <button class="button subtle wide" id="reassign-room-button">방 재배정</button>
+                    <button class="button subtle wide" id="close-room-button">문의방 종료</button>
+                </div>
+            </section>
+
+            <section class="panel">
+                <div class="panel-header">
+                    <h2>메시지 전송</h2>
+                </div>
+                <p class="meta-text">현재 roomId 기준으로 텍스트 메시지를 전송합니다. CLOSED 방이면 서버 차단 여부도 함께 확인합니다.</p>
+                <label class="field">
+                    <span>내용</span>
+                    <textarea id="message-input" rows="4" placeholder="현재 방에 보낼 메시지를 입력하세요"></textarea>
+                </label>
+                <code class="destination-preview" id="send-destination-preview">/pub/support/v1/rooms/{roomId}/messages</code>
+                <button class="button primary wide" id="send-message-button">메시지 전송</button>
+            </section>
+
+            <section class="panel">
+                <div class="panel-header">
+                    <h2>AI 선응답</h2>
+                </div>
+                <p class="contract-label">
+                    현재 방의 최근 고객 메시지를 바탕으로 간단한 AI 선응답을 생성합니다.
+                    생성된 응답은 일반 메시지처럼 <code>senderType=AI</code>로 저장되고 브로드캐스트됩니다.
+                </p>
+                <code class="destination-preview" id="ai-reply-destination-preview">POST /api/support/v1/rooms/{roomId}/ai-replies</code>
+                <button class="button ghost wide" id="create-ai-reply-button">AI 선응답 생성</button>
+            </section>
+
+            <section class="panel">
+                <div class="panel-header">
+                    <h2>읽음 처리</h2>
+                </div>
+                <p class="meta-text">마지막으로 읽은 메시지 ID를 보내고 읽음 이벤트와 unread sync가 어떻게 반영되는지 확인합니다.</p>
+                <label class="field">
+                    <span>lastReadMessageId</span>
+                    <input type="number" id="last-read-message-id-input" placeholder="예: 42">
+                </label>
+                <code class="destination-preview" id="read-send-destination-preview">/pub/support/v1/rooms/{roomId}/read</code>
+                <button class="button primary wide" id="send-read-button">읽음 이벤트 전송</button>
+            </section>
+
+            <section class="panel">
+                <div class="panel-header">
+                    <h2>REST 테스트</h2>
+                </div>
+                <p class="meta-text">방 생성, 방 목록, 방 상세, 메시지 이력 조회를 같은 화면에서 확인합니다.</p>
+                <div class="button-stack">
+                    <button class="button primary wide" id="create-room-button">문의방 생성</button>
+                    <button class="button ghost wide" id="fetch-my-rooms-button">내 문의방 목록 조회</button>
+                    <button class="button ghost wide" id="fetch-room-detail-button">문의방 상세 조회</button>
+                </div>
+                <label class="field">
+                    <span>beforeMessageId</span>
+                    <input type="number" id="before-message-id-input" placeholder="비우면 최신 페이지를 조회합니다">
+                </label>
+                <label class="field">
+                    <span>size</span>
+                    <input type="number" id="message-size-input" value="30" min="1" max="100">
+                </label>
+                <div class="button-stack">
+                    <button class="button ghost wide" id="fetch-room-messages-button">방 메시지 이력 조회</button>
+                </div>
+            </section>
+
+            <section class="panel">
+                <div class="panel-header">
+                    <h2>로그 정리</h2>
+                </div>
+                <p class="meta-text">이벤트, 에러, RAW, REST 영역을 각각 비울 수 있습니다.</p>
+                <div class="button-stack">
+                    <button class="button subtle wide" id="clear-friendly-logs-button">이벤트 로그 비우기</button>
+                    <button class="button subtle wide" id="clear-error-logs-button">에러 로그 비우기</button>
+                    <button class="button subtle wide" id="clear-raw-logs-button">RAW 로그 비우기</button>
+                    <button class="button subtle wide" id="clear-rest-output-button">REST 응답 비우기</button>
+                </div>
+            </section>
+        </aside>
+
+        <section class="log-board">
+            <div class="panel tall">
+                <div class="panel-header">
+                    <h2>메시지 타임라인</h2>
+                    <span class="meta-text" id="message-count">0건</span>
+                </div>
+                <p class="meta-text">수신한 USER, COUNSELOR, AI 메시지가 시간 역순으로 쌓입니다.</p>
+                <div class="timeline" id="message-timeline"></div>
+            </div>
+
+            <div class="split-row">
+                <div class="panel">
+                    <div class="panel-header">
+                        <h2>읽음 / 시스템 이벤트</h2>
+                    </div>
+                    <p class="meta-text">방 읽음 이벤트, 개인 unread sync, 대기열 이벤트를 확인합니다.</p>
+                    <div class="event-list" id="read-event-list"></div>
+                </div>
+
+                <div class="panel">
+                    <div class="panel-header">
+                        <h2>REST 응답</h2>
+                    </div>
+                    <p class="meta-text">버튼으로 호출한 REST 응답 JSON을 그대로 보여줍니다.</p>
+                    <pre class="code-block" id="rest-output"></pre>
+                </div>
+            </div>
+
+            <div class="split-row">
+                <div class="panel">
+                    <div class="panel-header">
+                        <h2>이벤트 로그</h2>
+                    </div>
+                    <p class="meta-text">성공 흐름과 상태 변화를 읽기 쉬운 문장으로 보여줍니다.</p>
+                    <div class="event-list" id="friendly-log-list"></div>
+                </div>
+
+                <div class="panel">
+                    <div class="panel-header">
+                        <h2>에러 로그</h2>
+                    </div>
+                    <p class="meta-text">입력 오류, 서버 응답 실패, 연결 실패를 먼저 확인하는 영역입니다.</p>
+                    <div class="event-list error-list" id="error-log-list"></div>
+                </div>
+            </div>
+
+            <div class="panel raw-panel">
+                <div class="panel-header">
+                    <h2>RAW STOMP 로그</h2>
+                    <span class="meta-text">Authorization 헤더는 마스킹됩니다</span>
+                </div>
+                <p class="meta-text">실제 CONNECT, SUBSCRIBE, SEND, MESSAGE frame 원문을 확인합니다.</p>
+                <pre class="code-block" id="raw-log-output"></pre>
+            </div>
+        </section>
+    </main>
+</div>
+
+<script src="./support-chat.js"></script>
+</body>
+</html>
