@@ -36,4 +36,10 @@ public class PageableUtil {
         int safeSize = (size >= MIN_SIZE && size <= MAX_SIZE) ? size : 5;
         return PageRequest.of(safePage - 1, safeSize, Sort.by(Sort.Direction.ASC, sortProperty));
     }
+
+    public static Pageable createSafePageRequest(int page, int size) {
+        int safePage = Math.max(page, MIN_PAGE);
+        int safeSize = (size >= MIN_SIZE && size <= MAX_SIZE) ? size : 5;
+        return PageRequest.of(safePage - 1, safeSize);
+    }
 }

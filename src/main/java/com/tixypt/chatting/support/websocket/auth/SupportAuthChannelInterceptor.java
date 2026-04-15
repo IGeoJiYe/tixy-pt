@@ -1,4 +1,4 @@
-package com.tixypt.core.security.interceptor;
+package com.tixypt.chatting.support.websocket.auth;
 
 
 import com.tixypt.core.constant.AuthConstants;

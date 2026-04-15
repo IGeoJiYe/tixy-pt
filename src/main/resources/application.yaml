@@ -42,3 +42,7 @@ management:
     web:
       exposure:
         include: health, caches
+
+support:
+  claim-timeout-minutes: 30
+  claim-timeout-check-ms: 60000

@@ -3,8 +3,8 @@ package com.tixypt.chatting.support.message.controller;
 import com.tixypt.chatting.support.message.dto.event.SupportMessageEvent;
 import com.tixypt.chatting.support.message.dto.request.SupportSendMessageRequest;
 import com.tixypt.chatting.support.message.service.SupportMessageService;
-import com.tixypt.chatting.support.websocket.LocalSupportEventBroadcaster;
-import com.tixypt.core.security.interceptor.SupportStompPrincipal;
+import com.tixypt.chatting.support.websocket.SupportEventDispatcher;
+import com.tixypt.chatting.support.websocket.auth.SupportStompPrincipal;
 import lombok.RequiredArgsConstructor;
 import org.springframework.messaging.handler.annotation.DestinationVariable;
 import org.springframework.messaging.handler.annotation.MessageMapping;
@@ -17,7 +17,7 @@ import java.security.Principal;
 public class SupportMessageController {
 
     private final SupportMessageService supportMessageService;
-    private final LocalSupportEventBroadcaster localSupportEventBroadcaster;
+    private final SupportEventDispatcher supportEventDispatcher;
 
     // STOMP publish 요청을 받아서 현재 로그인 사용자의 메시지로 저장하고 저장 결과를 같은 문의방 구독 채널로 바로 전파
     @MessageMapping("/rooms/{roomId}/messages")
@@ -34,7 +34,7 @@ public class SupportMessageController {
                 request == null ? null : request.content()
         );
 
-        localSupportEventBroadcaster.broadcastMessage(event);
+        supportEventDispatcher.dispatchMessage(event);
     }
 }
 

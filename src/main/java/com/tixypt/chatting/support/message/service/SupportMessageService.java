@@ -1,7 +1,6 @@
 package com.tixypt.chatting.support.message.service;
 
 import com.tixypt.api.member.entity.Member;
-import com.tixypt.api.member.enums.MemberRole;
 import com.tixypt.api.member.service.MemberService;
 import com.tixypt.chatting.support.entity.SupportMessage;
 import com.tixypt.chatting.support.entity.SupportMessageSenderType;
@@ -13,6 +12,7 @@ import com.tixypt.chatting.support.message.dto.event.SupportMessageEvent;
 import com.tixypt.chatting.support.message.dto.response.SupportMessageResponse;
 import com.tixypt.chatting.support.message.dto.response.SupportMessageSliceResponse;
 import com.tixypt.chatting.support.message.repository.SupportMessageRepository;
+import com.tixypt.chatting.support.policy.SupportAccessPolicy;
 import com.tixypt.chatting.support.room.repository.SupportRoomRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.PageRequest;
@@ -24,7 +24,9 @@ import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
-import java.util.Objects;
+
+import static com.tixypt.chatting.support.policy.SupportAccessPolicy.isCounselor;
+import static com.tixypt.chatting.support.policy.SupportAccessPolicy.validateRoomAccess;
 
 @Service
 @RequiredArgsConstructor
@@ -36,6 +38,7 @@ public class SupportMessageService {
 
     private final SupportRoomRepository supportRoomRepository;
     private final SupportMessageRepository supportMessageRepository;
+    private final SupportSystemMessageService supportSystemMessageService;
     private final MemberService memberService;
 
     // 메시지 목록은 최신 메시지부터 size + 1건 조회한 뒤에
@@ -74,7 +77,8 @@ public class SupportMessageService {
         return new SupportMessageSliceResponse(responses, hasNext, nextCursor);
     }
 
-    // 발신자 구분은 이후에 화면 표시랑 권한 흐름의 기준이 되니까 사용자 역할을 메시지 저장 시점에 확정
+    // 메시지 저장 전에 방 접근이 가능한지, 방 상태랑, 발신 가능한 역할인지 순서대로 검증
+    // 고객이 SOLVED 상태에서 다시 메시지를 보내면 같은 몬의를 reopened 처리
     @Transactional
     public SupportMessageEvent sendMessage(Long loginUserId, Long roomId, String content) {
         Member loginUser = memberService.findById(loginUserId);
@@ -83,10 +87,15 @@ public class SupportMessageService {
 
         validateRoomAccess(loginUser, room);
         validateRoomWritable(room);
+        SupportAccessPolicy.validateParticipantWritable(loginUser);
+        boolean reopened = reopenSolvedRoomIfNeeded(loginUser, room);
 
-        if (isCounselor(loginUser)) {
-            // 상담원이 실제로 응답한 시점을 방 활동 시각으로 함께 남긴다.
+        if (SupportAccessPolicy.isCounselor(loginUser)) {
             room.touchCounselorActivity(LocalDateTime.now());
+        }
+
+        if (reopened) {
+            supportSystemMessageService.appendReopenedMessage(room);
         }
 
         String normalizedContent = normalizeContent(content);
@@ -98,8 +107,6 @@ public class SupportMessageService {
         room.updateLastMessage(savedMessage.getId(), savedMessage.getCreatedAt());
         return SupportMessageEvent.from(savedMessage);
     }
-
-
 
 
     private SupportMessageSenderType senderType(Member loginUser) {
@@ -137,23 +144,12 @@ public class SupportMessageService {
         return supportMessageRepository.findByRoomIdAndIdLessThanOrderByIdDesc(roomId, beforeMessageId, pageRequest);
     }
 
-    // 고객은 자신의 문의방만 조회할 수 있고 상담사는 현재 자신이 담당 중인 방만 조회할 수 있음
-    private void validateRoomAccess(Member loginUser, SupportRoom room) {
-        if (isCounselor(loginUser)) {
-            if (!Objects.equals(room.getCounselorUserId(), loginUser.getId())) {
-                throw new SupportRoomException(SupportRoomErrorCode.ROOM_ACCESS_DENIED);
-            }
-            return;
+
+    // 고객이 해결 대기 상태에서 다시 메시지를 보내면 같은 문의를 reopened 처리
+    private boolean reopenSolvedRoomIfNeeded(Member loginUser, SupportRoom room) {
+        if (!SupportAccessPolicy.isCounselor(loginUser) && room.getStatus() == SupportRoomStatus.SOLVED) {
+            return room.reopen();
         }
-
-        if (!Objects.equals(room.getCustomerUserId(), loginUser.getId())) {
-            throw new SupportRoomException(SupportRoomErrorCode.ROOM_ACCESS_DENIED);
-        }
+        return false;
     }
-
-    private boolean isCounselor(Member loginUser) {
-        return loginUser.getRole() == MemberRole.ADMIN;
-    }
-
-
 }

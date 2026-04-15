@@ -8,10 +8,11 @@ import com.tixypt.chatting.support.entity.SupportRoomStatus;
 import com.tixypt.chatting.support.exception.SupportRoomErrorCode;
 import com.tixypt.chatting.support.exception.SupportRoomException;
 import com.tixypt.chatting.support.message.repository.SupportMessageRepository;
+import com.tixypt.chatting.support.policy.SupportAccessPolicy;
 import com.tixypt.chatting.support.read.dto.event.SupportReadReceiptEvent;
-import com.tixypt.chatting.support.read.dto.response.SupportReadReceiptResult;
 import com.tixypt.chatting.support.read.dto.event.SupportUnreadSyncEvent;
 import com.tixypt.chatting.support.room.repository.SupportRoomRepository;
+import com.tixypt.chatting.support.websocket.SupportEventDispatcher;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -26,10 +27,16 @@ public class SupportReadReceiptService {
     private final SupportRoomRepository supportRoomRepository;
     private final SupportMessageRepository supportMessageRepository;
     private final MemberService memberService;
+    private final SupportEventDispatcher supportEventDispatcher;
 
     // 읽음 처리랑 unread 재 계산은 항상 같은 기준으로 움직이니까 검증, 상태 반영, 이벤트 payload 생성을 한 묶음
     @Transactional
-    public SupportReadReceiptResult markAsRead(Long loginUserId, Long roomId, Long lastReadMessageId) {
+    public void markAsRead(
+            Long loginUserId,
+            String userName,
+            Long roomId,
+            Long lastReadMessageId
+    ) {
         if (lastReadMessageId == null) {
             throw new SupportRoomException(SupportRoomErrorCode.INVALID_READ_RECEIPT);
         }
@@ -38,10 +45,12 @@ public class SupportReadReceiptService {
         SupportRoom room = supportRoomRepository.findById(roomId)
                 .orElseThrow(() -> new SupportRoomException(SupportRoomErrorCode.ROOM_NOT_FOUND));
 
-        room = ensureRoomAccess(loginUser, room);
+        SupportAccessPolicy.validateParticipantWritable(loginUser);
+        SupportAccessPolicy.validateRoomAccess(loginUser, room);
         validateRoomWritable(room);
 
         if (isCounselor(loginUser)) {
+            // 상담원이 읽음 처리했다면 그 방을 실제로 보고 있는 중으로 간주
             room.touchCounselorActivity(LocalDateTime.now());
         }
 
@@ -52,6 +61,10 @@ public class SupportReadReceiptService {
                 ? room.markCounselorRead(lastReadMessageId, readAt)
                 : room.markCustomerRead(lastReadMessageId, readAt);
 
+        if (!updated) {
+            return;
+        }
+
         long unreadCount = unreadCount(room, loginUser);
         LocalDateTime effectiveReadAt = isCounselor(loginUser)
                 ? room.getCounselorLastReadAt()
@@ -60,23 +73,22 @@ public class SupportReadReceiptService {
                 ? room.getCounselorLastReadMessageId()
                 : room.getCustomerLastReadMessageId();
 
-        return new SupportReadReceiptResult(
-                updated,
-                new SupportReadReceiptEvent(
-                        roomId,
-                        loginUserId,
-                        loginUser.getRole().name(),
-                        effectiveLastReadMessageId,
-                        effectiveReadAt
-                ),
-                new SupportUnreadSyncEvent(
-                        roomId,
-                        effectiveLastReadMessageId,
-                        unreadCount,
-                        effectiveReadAt
-                )
+        SupportReadReceiptEvent roomEvent = new SupportReadReceiptEvent(
+                roomId,
+                loginUserId,
+                loginUser.getRole().name(),
+                effectiveLastReadMessageId,
+                effectiveReadAt
         );
 
+        SupportUnreadSyncEvent userEvent = new SupportUnreadSyncEvent(
+                roomId,
+                effectiveLastReadMessageId,
+                unreadCount,
+                effectiveReadAt
+        );
+
+        supportEventDispatcher.dispatchReadReceipt(userName, roomEvent, userEvent);
     }
 
 
@@ -115,18 +127,6 @@ public class SupportReadReceiptService {
         if (room.getStatus() == SupportRoomStatus.CLOSED) {
             throw new SupportRoomException(SupportRoomErrorCode.ROOM_ALREADY_CLOSED);
         }
-    }
-
-    private SupportRoom ensureRoomAccess(Member loginUser, SupportRoom room) {
-        if (isCounselor(loginUser) && !loginUser.getId().equals(room.getCounselorUserId())) {
-            throw new SupportRoomException(SupportRoomErrorCode.ROOM_ACCESS_DENIED);
-        }
-
-        if (!isCounselor(loginUser) && !room.getCustomerUserId().equals(loginUser.getId())) {
-            throw new SupportRoomException(SupportRoomErrorCode.ROOM_ACCESS_DENIED);
-        }
-
-        return room;
     }
 
     private boolean isCounselor(Member loginUser) {

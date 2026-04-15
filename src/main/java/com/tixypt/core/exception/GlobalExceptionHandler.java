@@ -1,11 +1,15 @@
 package com.tixypt.core.exception;
 
+import com.tixypt.chatting.support.exception.SupportRoomErrorCode;
+import com.tixypt.chatting.support.message.dto.request.SupportMessageQueryRequest;
 import com.tixypt.core.dto.ApiResponse;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.extern.slf4j.Slf4j;
 import org.hibernate.exception.LockAcquisitionException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.validation.BindException;
+import org.springframework.validation.FieldError;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
@@ -47,6 +51,18 @@ public class GlobalExceptionHandler {
         return ResponseEntity
                 .badRequest() // 400 Bad Request
                 .body(ApiResponse.fail(buildErrorResponse(CommonErrorCode.INVALID_INPUT_VALUE, errorMessage, request.getRequestURI())));
+    }
+
+    @ExceptionHandler(BindException.class)
+    public ResponseEntity<ApiResponse<Void>> handleBindException(BindException e, HttpServletRequest request) {
+        log.warn("BindException : {}", e.getMessage());
+        FieldError fieldError = e.getBindingResult().getFieldError();
+        ErrorCode errorCode = resolveBindErrorCode(e, fieldError);
+        String errorMessage = fieldError != null ? fieldError.getDefaultMessage() : errorCode.getMessage();
+
+        return ResponseEntity
+                .status(errorCode.getStatus())
+                .body(ApiResponse.fail(buildErrorResponse(errorCode, errorMessage, request.getRequestURI())));
     }
 
     /**
@@ -115,5 +131,21 @@ public class GlobalExceptionHandler {
                 .message(message)
                 .path(path)
                 .build();
+    }
+
+    private ErrorCode resolveBindErrorCode(BindException exception, FieldError fieldError) {
+        return resolveFieldValidationErrorCode(exception.getBindingResult().getTarget(), fieldError);
+    }
+
+    private ErrorCode resolveFieldValidationErrorCode(Object target, FieldError fieldError) {
+        if (target instanceof SupportMessageQueryRequest && fieldError != null) {
+            if ("beforeMessageId".equals(fieldError.getField())) {
+                return SupportRoomErrorCode.INVALID_MESSAGE_CURSOR;
+            }
+            if ("size".equals(fieldError.getField())) {
+                return SupportRoomErrorCode.INVALID_MESSAGE_PAGE_SIZE;
+            }
+        }
+        return CommonErrorCode.INVALID_INPUT_VALUE;
     }
 }

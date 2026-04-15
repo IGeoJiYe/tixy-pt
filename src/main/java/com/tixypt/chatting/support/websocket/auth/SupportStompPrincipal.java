@@ -1,4 +1,4 @@
-package com.tixypt.core.security.interceptor;
+package com.tixypt.chatting.support.websocket.auth;
 
 import lombok.Getter;
 import org.springframework.security.authentication.BadCredentialsException;

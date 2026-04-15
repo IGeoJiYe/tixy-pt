@@ -1,13 +1,14 @@
 package com.tixypt.chatting.support.room.service;
 
 import com.tixypt.api.member.entity.Member;
-import com.tixypt.api.member.enums.MemberRole;
 import com.tixypt.api.member.service.MemberService;
 import com.tixypt.chatting.support.entity.SupportRoom;
 import com.tixypt.chatting.support.entity.SupportRoomStatus;
 import com.tixypt.chatting.support.exception.SupportRoomErrorCode;
 import com.tixypt.chatting.support.exception.SupportRoomException;
 import com.tixypt.chatting.support.message.repository.SupportMessageRepository;
+import com.tixypt.chatting.support.message.service.SupportSystemMessageService;
+import com.tixypt.chatting.support.policy.SupportAccessPolicy;
 import com.tixypt.chatting.support.room.dto.response.CreateSupportRoomResponse;
 import com.tixypt.chatting.support.room.dto.response.SupportRoomDetailResponse;
 import com.tixypt.chatting.support.room.dto.response.SupportRoomSummaryResponse;
@@ -20,30 +21,48 @@ import org.springframework.data.domain.Slice;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.List;
+
+import static com.tixypt.chatting.support.policy.SupportAccessPolicy.isCounselor;
+
 @Service
 @RequiredArgsConstructor
 @Transactional(readOnly = true)
 public class SupportRoomService {
 
+    private static final List<SupportRoomStatus> ACTIVE_ROOM_STATUSES = List.of(
+            SupportRoomStatus.OPEN,
+            SupportRoomStatus.SOLVED
+    );
+
     private final SupportRoomRepository supportRoomRepository;
     private final SupportMessageRepository supportMessageRepository;
+    private final SupportSystemMessageService supportSystemMessageService;
     private final MemberService memberService;
 
+    // 고객이 현재 이어서 사용할 문의방을 확보
+    // 이미 진행 중인 OPEN/SOLVED 방이 있으면 재사용하고 없을 때만 새 방 만듦
     @Transactional
     public CreateSupportRoomResponse createRoom(Long loginUserId) {
-        // 고객이 지금 이어서 사용할 문의방을 확보. 이미 open 방이 있으면 재사용하고, 없을 때만 새 문의방 만듦
         Member loginUser = memberService.findById(loginUserId);
-        validateCustomerOnly(loginUser);
+        SupportAccessPolicy.validateCustomerOnly(loginUser);
 
-        return supportRoomRepository.findByCustomerUserIdAndStatus(loginUserId, SupportRoomStatus.OPEN)
-                .map(existRoom -> new CreateSupportRoomResponse(existRoom.getId(), false))
+        return supportRoomRepository.findTopByCustomerUserIdAndStatusInOrderByIdDesc(loginUserId, ACTIVE_ROOM_STATUSES)
+                .map(existingRoom -> new CreateSupportRoomResponse(existingRoom.getId(), false))
                 .orElseGet(() -> creatNewOpenRoom(loginUserId));
     }
 
+    // 같은 "/me" 목록이라도 고객, 상담원, SUPER_ADMIN이 보는 기준이 다르기 때문에 역할에 맞는 조회 쿼리 선택
     public SliceResponse<SupportRoomSummaryResponse> getMyRooms(Long loginUserId, int page, int size) {
-        // 같은 "/me" 목록이라도 고객이랑 상담원이 보는 기준이 다르니까 역할에 맞는 조회 쿼리만 나눠서 타고 응답 형태는 공통
         Member loginUser = memberService.findById(loginUserId);
-        Pageable pageable = PageableUtil.createSafePageableDesc(page, size, "id");
+        Pageable pageable = PageableUtil.createSafePageRequest(page, size);
+
+        if (SupportAccessPolicy.isSuperAdmin(loginUser)) {
+            return buildRoomSlice(
+                    supportRoomRepository.findAllByOrderByIdDesc(pageable),
+                    loginUser
+            );
+        }
 
         if (isCounselor(loginUser)) {
             return buildRoomSlice(
@@ -58,43 +77,26 @@ public class SupportRoomService {
         );
     }
 
+    // 방 상세는 고객이랑 상담원 SUPER_ADMIN이 모두 사용할 수 있지만 실제 접근 가능 여부는 다시 검증
     public SupportRoomDetailResponse getRoomDetail(Long loginUserId, Long roomId) {
-        // 상세 조회는 공통 서비스에서 처리하되,
-        // 실제 접근 가능 여부는 고객/상담원 규칙에 맞춰 다시 검증한다.
         Member loginUser = memberService.findById(loginUserId);
         SupportRoom room = getRoomOrThrow(roomId);
 
-        validateRoomAccess(loginUser, room);
+        SupportAccessPolicy.validateRoomAccess(loginUser, room);
         return SupportRoomDetailResponse.from(room);
     }
 
 
 
-
+    // 방 생성 시점에는 담당 상담원이 정해지지 않았으니까 counselor는 null로 시작
     private CreateSupportRoomResponse creatNewOpenRoom(Long customerUserId) {
-        // 고객 방 생성 시점에는 상담원이 정해지지 않았으니까 counselor는 null로 둔다
         SupportRoom room = supportRoomRepository.save(SupportRoom.open(customerUserId, null));
+        supportSystemMessageService.appendRoomCreatedMessage(room);
         return new CreateSupportRoomResponse(room.getId(), true);
     }
 
-    private void validateCustomerOnly(Member loginUser) {
-        // 문의방 생성은 고객 시작 흐름으로 제한함, 상담원은 대기열 claim 또는 운영 기능 통해서만 방에 들어감
-        if (isCounselor(loginUser)) {
-            throw new SupportRoomException(SupportRoomErrorCode.ROOM_ACCESS_DENIED);
-        }
-    }
-
-    private void validateRoomAccess(Member loginUser, SupportRoom room) {
-        if (isCounselor(loginUser)) {
-            validateCounselorAccess(loginUser.getId(), room);
-            return;
-        }
-
-        validateCustomerAccess(loginUser.getId(), room);
-    }
-
+   // 목록 화면에서 바로 읽지 않은 메시지 수를 보여 줄 수 있게 각 방의 unread 개수를 함께 계산해서 변환
     private SliceResponse<SupportRoomSummaryResponse> buildRoomSlice(Slice<SupportRoom> rooms, Member loginUser) {
-        // 방 요약 목록에서는 각 방의 unread 수를 함께 계산해서 목록 화면만으로 새 메시지 유무를 바로 표현할 수 있게 함
         Slice<SupportRoomSummaryResponse> responseSlice = rooms
                 .map(room -> SupportRoomSummaryResponse.from(room, calculateUnreadCount(room, loginUser)));
         return SliceResponse.of(responseSlice.hasNext(), responseSlice.getContent());
@@ -105,45 +107,18 @@ public class SupportRoomService {
                 .orElseThrow(() -> new SupportRoomException(SupportRoomErrorCode.ROOM_NOT_FOUND));
     }
 
-    private void validateCustomerAccess(Long loginUserId, SupportRoom room) {
-        // 고객 상세/목록 흐름에서 타인의 문의방을 보는 것을 막음
-        if (!room.getCustomerUserId().equals(loginUserId)) {
-            throw new SupportRoomException(SupportRoomErrorCode.ROOM_ACCESS_DENIED);
-        }
-    }
-
-    private void validateCounselorAccess(Long loginUserId, SupportRoom room) {
-        // 상담원은 현재 claim된 방에만 접근할 수 있음 미배정 방이나 다른 상담원 담당 방은 운영 대기열에서만 보여 줌
-        if (room.getCounselorUserId() == null || !room.getCounselorUserId().equals(loginUserId)) {
-            throw new SupportRoomException(SupportRoomErrorCode.ROOM_ACCESS_DENIED);
-        }
-    }
-
-    private boolean isCounselor(Member loginUser) {
-        // 현재는 admin을 상담원 역할
-        return loginUser.getRole() == MemberRole.ADMIN;
-    }
 
     private long calculateUnreadCount(SupportRoom room, Member loginUser) {
-        // 고객은 상담원/ai 쪽 메시지를, 상담원은 고객/ai 쪽 메시지 기준으로 센다
-        if (isCounselor(loginUser)) {
-            long lastReadMessageId = room.getCounselorLastReadMessageId() == null
-                    ? 0L
-                    : room.getCounselorLastReadMessageId();
-            return supportMessageRepository.countUnreadForCounselor(
-                    room.getId(),
-                    lastReadMessageId,
-                    loginUser.getId()
-            );
+        if (SupportAccessPolicy.isSuperAdmin(loginUser)) {
+            return 0L;
         }
 
-        long lastReadMessageId = room.getCustomerLastReadMessageId() == null
-                ? 0L
-                : room.getCustomerLastReadMessageId();
-        return supportMessageRepository.countUnreadForCustomer(
-                room.getId(),
-                lastReadMessageId,
-                loginUser.getId()
-        );
+        if (SupportAccessPolicy.isCounselor(loginUser)) {
+            long lastReadMessageId = room.getCounselorLastReadMessageId() == null ? 0L : room.getCounselorLastReadMessageId();
+            return supportMessageRepository.countUnreadForCounselor(room.getId(), lastReadMessageId, loginUser.getId());
+        }
+
+        long lastReadMessageId = room.getCustomerLastReadMessageId() == null ? 0L : room.getCustomerLastReadMessageId();
+        return supportMessageRepository.countUnreadForCustomer(room.getId(), lastReadMessageId, loginUser.getId());
     }
 }

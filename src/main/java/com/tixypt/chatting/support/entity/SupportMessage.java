@@ -63,6 +63,16 @@ public class SupportMessage {
                 .build();
     }
 
+    public static SupportMessage system(SupportRoom room, String content) {
+        return SupportMessage.builder()
+                .room(room)
+                .senderUserId(null)
+                .senderType(SupportMessageSenderType.SYSTEM)
+                .messageType(SupportMessageType.SYSTEM)
+                .content(content)
+                .build();
+    }
+
     @Builder
     private SupportMessage(
             SupportRoom room,

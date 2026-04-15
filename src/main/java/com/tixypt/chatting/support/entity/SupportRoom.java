@@ -144,6 +144,26 @@ public class SupportRoom extends BaseEntity {
         return true;
     }
 
+    // OPEN 상태에서만 해결 대기 상태로 전환
+    public boolean solve() {
+        if (this.status != SupportRoomStatus.OPEN) {
+            return false;
+        }
+
+        this.status = SupportRoomStatus.SOLVED;
+        return true;
+    }
+
+    // 고객이 다시 메시지를 보내면 SOLVED 방을 별도 액션 없이 다시 OPEN으로 되돌림
+    public boolean reopen() {
+        if (this.status != SupportRoomStatus.SOLVED) {
+            return false;
+        }
+
+        this.status = SupportRoomStatus.OPEN;
+        return true;
+    }
+
     public void updateLastMessage(Long lastMessageId, LocalDateTime lastMessageAt) {
         // 방 목록 정렬이랑 미리보기에 쓰는 마지막 메시지 정보를 함께 갱신
         this.lastMessageId = lastMessageId;

@@ -3,6 +3,7 @@ package com.tixypt.chatting.support.websocket;
 import com.tixypt.chatting.support.message.dto.event.SupportMessageEvent;
 import com.tixypt.chatting.support.read.dto.event.SupportReadReceiptEvent;
 import com.tixypt.chatting.support.read.dto.event.SupportUnreadSyncEvent;
+import com.tixypt.chatting.support.room.dto.event.SupportRoomQueueEvent;
 import lombok.RequiredArgsConstructor;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.stereotype.Component;
@@ -33,7 +34,15 @@ public class LocalSupportEventBroadcaster {
     public void broadcastReadUser(String userName, SupportUnreadSyncEvent event) {
         messagingTemplate.convertAndSendToUser(
                 userName,
-                "/queue/support/v1/read",
+                SupportStompDestination.BROKER_USER_QUEUE_PREFIX + "/read",
+                event
+        );
+    }
+
+    // 대기열 이벤트는 queue 구독자 전체가 보는 destination으로 보냄
+    public void broadcastQueue(SupportRoomQueueEvent event) {
+        messagingTemplate.convertAndSend(
+                SupportStompDestination.SUBSCRIBE_PREFIX + "/queue",
                 event
         );
     }

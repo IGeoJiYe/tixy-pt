@@ -1,7 +1,7 @@
 package com.tixypt.core.config;
 
 import com.tixypt.chatting.support.websocket.SupportStompDestination;
-import com.tixypt.core.security.interceptor.SupportAuthChannelInterceptor;
+import com.tixypt.chatting.support.websocket.auth.SupportAuthChannelInterceptor;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.core.Ordered;
@@ -34,13 +34,19 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
 
     @Override
     public void registerStompEndpoints(StompEndpointRegistry registry) {
+        // 브라우저 디버그 콘솔은 순수 WebSocket으로 바로 붙기 때문에 기본 endpoint를 함께 연다
         registry.addEndpoint(SupportStompDestination.ENDPOINT)
                 .setAllowedOriginPatterns("*");
-//                .withSockJS();
+
+        // SockJS fallback 경로는 기존 테스트와 호환을 위해 계속 유지
+        registry.addEndpoint(SupportStompDestination.ENDPOINT)
+                .setAllowedOriginPatterns("*")
+                .withSockJS();
     }
 
     @Override
     public void configureClientInboundChannel(ChannelRegistration registration) {
+        // STOMP CONNECT 단계 jwt 인증은 inbound channel interceptor가 담당
         registration.interceptors(supportAuthChannelInterceptor);
     }
 }

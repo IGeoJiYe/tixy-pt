@@ -1,10 +1,8 @@
 package com.tixypt.chatting.support.read.controller;
 
 import com.tixypt.chatting.support.read.dto.request.SupportReadReceiptRequest;
-import com.tixypt.chatting.support.read.dto.response.SupportReadReceiptResult;
 import com.tixypt.chatting.support.read.service.SupportReadReceiptService;
-import com.tixypt.chatting.support.websocket.LocalSupportEventBroadcaster;
-import com.tixypt.core.security.interceptor.SupportStompPrincipal;
+import com.tixypt.chatting.support.websocket.auth.SupportStompPrincipal;
 import lombok.RequiredArgsConstructor;
 import org.springframework.messaging.handler.annotation.DestinationVariable;
 import org.springframework.messaging.handler.annotation.MessageMapping;
@@ -17,7 +15,6 @@ import java.security.Principal;
 public class SupportReadReceiptController {
 
     private final SupportReadReceiptService supportReadReceiptService;
-    private final LocalSupportEventBroadcaster localSupportEventBroadcaster;
 
     @MessageMapping("/rooms/{roomId}/read")
     public void markAsRead(
@@ -25,18 +22,14 @@ public class SupportReadReceiptController {
             SupportReadReceiptRequest request,
             Principal principal
     ) {
+        // 읽음 이벤트도 메시지 전송이랑 똑같이 Principal에서 로그인 사용자 꺼내고 서비스에 위임
         SupportStompPrincipal supportPrincipal = SupportStompPrincipal.from(principal);
 
-        SupportReadReceiptResult result = supportReadReceiptService.markAsRead(
+        supportReadReceiptService.markAsRead(
                 supportPrincipal.getUserId(),
+                supportPrincipal.getName(),
                 roomId,
                 request == null ? null : request.lastReadMessageId()
-        );
-
-        localSupportEventBroadcaster.broadcastReadRoom(result.roomEvent());
-        localSupportEventBroadcaster.broadcastReadUser(
-                supportPrincipal.getName(),
-                result.userQueueEvent()
         );
     }
 }
