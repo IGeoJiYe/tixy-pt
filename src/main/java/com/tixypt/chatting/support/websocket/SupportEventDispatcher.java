@@ -8,6 +8,8 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.stereotype.Component;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 @Slf4j
 @Component
@@ -21,7 +23,6 @@ public class SupportEventDispatcher {
     // publisher가 없거나 실패하면 로컬 브로드캐스트로 바로 fallback
     public void dispatchMessage(SupportMessageEvent event) {
         SupportRedisEventPublisher publisher = supportRedisEventPublisherProvider.getIfAvailable();
-
         if (publisher == null) {
             localSupportEventBroadcaster.broadcastMessage(event);
             return;
@@ -30,10 +31,13 @@ public class SupportEventDispatcher {
         try {
             publisher.publish(SupportRedisEvent.message(event));
         } catch (RuntimeException exception) {
-            // 레디스 발행 실패가 채팅 중단이 되면 안 되니까 로컬 브로드캐스트로 즉시 전환
             log.warn("문의 채팅 메시지 Redis 발행에 실패해 로컬 브로드캐스트로 전환합니다.");
             localSupportEventBroadcaster.broadcastMessage(event);
         }
+    }
+
+    public void dispatchMessageAfterCommit(SupportMessageEvent event) {
+        runAfterCommit(() -> dispatchMessage(event));
     }
 
     public void dispatchReadReceipt(
@@ -41,7 +45,7 @@ public class SupportEventDispatcher {
             SupportReadReceiptEvent roomEvent,
             SupportUnreadSyncEvent userEvent
     ) {
-        // 읽음 처리 결과가 두 갈래로 갈라짐. 방 전체에는 roomEvent, 현재 사용자 개인 채널에는 unread sync 보냄
+        // 방 전체에는 roomEvent를 보내고 현재 사용자 개인 채널에는 unread sync를 보낸다
         SupportRedisEventPublisher publisher = supportRedisEventPublisherProvider.getIfAvailable();
         if (publisher == null) {
             localDispatchReadReceipt(userName, roomEvent, userEvent);
@@ -52,10 +56,19 @@ public class SupportEventDispatcher {
             publisher.publish(SupportRedisEvent.readRoom(roomEvent));
             publisher.publish(SupportRedisEvent.readUser(userName, userEvent));
         } catch (RuntimeException exception) {
-            log.warn("문의 채팅 읽음 이벤트 Redis 발행에 실패해 로컬 브로드캐스트로 전환합니다.");
+            log.warn("지원 채팅 읽음 이벤트 Redis 발행에 실패해 로컬 브로드캐스트로 전환합니다.");
             localDispatchReadReceipt(userName, roomEvent, userEvent);
         }
     }
+
+    public void dispatchReadReceiptAfterCommit(
+            String userName,
+            SupportReadReceiptEvent roomEvent,
+            SupportUnreadSyncEvent userEvent
+    ) {
+        runAfterCommit(() -> dispatchReadReceipt(userName, roomEvent, userEvent));
+    }
+
 
     // queue 이벤트도 동일하게 레디스 우선 실패하면 로컬 fallback
     public void dispatchQueueEvent(SupportRoomQueueEvent event) {
@@ -73,7 +86,11 @@ public class SupportEventDispatcher {
         }
     }
 
-    // 레디스 없이 단일 서버로만 돌 때는 로컬 broadcaster로 바로 보냄
+    public void dispatchQueueEventAfterCommit(SupportRoomQueueEvent event) {
+        runAfterCommit(() -> dispatchQueueEvent(event));
+    }
+
+    // 레디스를 쓰지 않거나 실패했을 때 로컬로 직접 보냄
     private void localDispatchReadReceipt(
             String userName,
             SupportReadReceiptEvent roomEvent,
@@ -81,5 +98,19 @@ public class SupportEventDispatcher {
     ) {
         localSupportEventBroadcaster.broadcastReadRoom(roomEvent);
         localSupportEventBroadcaster.broadcastReadUser(userName, userEvent);
+    }
+
+    private void runAfterCommit(Runnable task) {
+        if (!TransactionSynchronizationManager.isSynchronizationActive()) {
+            task.run();
+            return;
+        }
+
+        TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+            @Override
+            public void afterCommit() {
+                task.run();
+            }
+        });
     }
 }

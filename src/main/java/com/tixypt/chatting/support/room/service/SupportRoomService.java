@@ -3,7 +3,7 @@ package com.tixypt.chatting.support.room.service;
 import com.tixypt.api.member.entity.Member;
 import com.tixypt.api.member.service.MemberService;
 import com.tixypt.chatting.support.entity.SupportRoom;
-import com.tixypt.chatting.support.entity.SupportRoomStatus;
+import com.tixypt.chatting.support.enums.SupportRoomStatus;
 import com.tixypt.chatting.support.exception.SupportRoomErrorCode;
 import com.tixypt.chatting.support.exception.SupportRoomException;
 import com.tixypt.chatting.support.message.repository.SupportMessageRepository;
@@ -15,6 +15,8 @@ import com.tixypt.chatting.support.room.dto.response.SupportRoomSummaryResponse;
 import com.tixypt.chatting.support.room.repository.SupportRoomRepository;
 import com.tixypt.core.dto.SliceResponse;
 import com.tixypt.core.util.PageableUtil;
+import jakarta.persistence.EntityManager;
+import jakarta.persistence.LockModeType;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Slice;
@@ -22,6 +24,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
+import java.util.Map;
 
 import static com.tixypt.chatting.support.policy.SupportAccessPolicy.isCounselor;
 
@@ -39,6 +42,7 @@ public class SupportRoomService {
     private final SupportMessageRepository supportMessageRepository;
     private final SupportSystemMessageService supportSystemMessageService;
     private final MemberService memberService;
+    private final EntityManager entityManager;
 
     // 고객이 현재 이어서 사용할 문의방을 확보
     // 이미 진행 중인 OPEN/SOLVED 방이 있으면 재사용하고 없을 때만 새 방 만듦
@@ -46,10 +50,11 @@ public class SupportRoomService {
     public CreateSupportRoomResponse createRoom(Long loginUserId) {
         Member loginUser = memberService.findById(loginUserId);
         SupportAccessPolicy.validateCustomerOnly(loginUser);
+        lockCustomerRoomCreation(loginUser);
 
         return supportRoomRepository.findTopByCustomerUserIdAndStatusInOrderByIdDesc(loginUserId, ACTIVE_ROOM_STATUSES)
                 .map(existingRoom -> new CreateSupportRoomResponse(existingRoom.getId(), false))
-                .orElseGet(() -> creatNewOpenRoom(loginUserId));
+                .orElseGet(() -> createNewOpenRoom(loginUserId));
     }
 
     // 같은 "/me" 목록이라도 고객, 상담원, SUPER_ADMIN이 보는 기준이 다르기 때문에 역할에 맞는 조회 쿼리 선택
@@ -64,7 +69,7 @@ public class SupportRoomService {
             );
         }
 
-        if (isCounselor(loginUser)) {
+        if (SupportAccessPolicy.isCounselor(loginUser)) {
             return buildRoomSlice(
                     supportRoomRepository.findAssignedRoomsForCounselor(loginUserId, pageable),
                     loginUser
@@ -89,36 +94,53 @@ public class SupportRoomService {
 
 
     // 방 생성 시점에는 담당 상담원이 정해지지 않았으니까 counselor는 null로 시작
-    private CreateSupportRoomResponse creatNewOpenRoom(Long customerUserId) {
+    private CreateSupportRoomResponse createNewOpenRoom(Long customerUserId) {
         SupportRoom room = supportRoomRepository.save(SupportRoom.open(customerUserId, null));
         supportSystemMessageService.appendRoomCreatedMessage(room);
         return new CreateSupportRoomResponse(room.getId(), true);
     }
 
-   // 목록 화면에서 바로 읽지 않은 메시지 수를 보여 줄 수 있게 각 방의 unread 개수를 함께 계산해서 변환
-    private SliceResponse<SupportRoomSummaryResponse> buildRoomSlice(Slice<SupportRoom> rooms, Member loginUser) {
-        Slice<SupportRoomSummaryResponse> responseSlice = rooms
-                .map(room -> SupportRoomSummaryResponse.from(room, calculateUnreadCount(room, loginUser)));
-        return SliceResponse.of(responseSlice.hasNext(), responseSlice.getContent());
+    // 같은 고객의 문의방 생성 요청 고객 row 비관적 락
+    private void lockCustomerRoomCreation(Member customer) {
+        entityManager.lock(customer, LockModeType.PESSIMISTIC_WRITE);
     }
 
+   // 문의방 Slice와 unread 집계를 묶어 최종 목록 응답으로 변환한다.
+   private SliceResponse<SupportRoomSummaryResponse> buildRoomSlice(Slice<SupportRoom> rooms, Member loginUser) {
+       Map<Long, Long> unreadCountByRoomId = loadUnreadCountByRoomId(rooms.getContent(), loginUser);
+       List<SupportRoomSummaryResponse> items = rooms.getContent().stream()
+               .map(room -> SupportRoomSummaryResponse.from(
+                       room,
+                       unreadCountByRoomId.getOrDefault(room.getId(), 0L)
+               ))
+               .toList();
+       return SliceResponse.of(rooms.hasNext(), items);
+   }
+
+   // 문의방 조회 -> 없으면 예외
     private SupportRoom getRoomOrThrow(Long roomId) {
         return supportRoomRepository.findById(roomId)
                 .orElseThrow(() -> new SupportRoomException(SupportRoomErrorCode.ROOM_NOT_FOUND));
     }
 
-
-    private long calculateUnreadCount(SupportRoom room, Member loginUser) {
-        if (SupportAccessPolicy.isSuperAdmin(loginUser)) {
-            return 0L;
+    // 현재 페이지에 보이는 문의방들의 unread count를 한 번에 집계
+    private Map<Long, Long> loadUnreadCountByRoomId(List<SupportRoom> rooms, Member loginUser) {
+        if (rooms.isEmpty() || SupportAccessPolicy.isSuperAdmin(loginUser)) {
+            return Map.of();
         }
 
-        if (SupportAccessPolicy.isCounselor(loginUser)) {
-            long lastReadMessageId = room.getCounselorLastReadMessageId() == null ? 0L : room.getCounselorLastReadMessageId();
-            return supportMessageRepository.countUnreadForCounselor(room.getId(), lastReadMessageId, loginUser.getId());
-        }
+        List<Long> roomIds = rooms.stream()
+                .map(SupportRoom::getId)
+                .toList();
 
-        long lastReadMessageId = room.getCustomerLastReadMessageId() == null ? 0L : room.getCustomerLastReadMessageId();
-        return supportMessageRepository.countUnreadForCustomer(room.getId(), lastReadMessageId, loginUser.getId());
+        List<SupportMessageRepository.RoomUnreadCountSummary> unreadCounts = SupportAccessPolicy.isCounselor(loginUser)
+                ? supportMessageRepository.countUnreadForCounselorRooms(roomIds, loginUser.getId())
+                : supportMessageRepository.countUnreadForCustomerRooms(roomIds, loginUser.getId());
+
+        return unreadCounts.stream()
+                .collect(java.util.stream.Collectors.toMap(
+                        SupportMessageRepository.RoomUnreadCountSummary::getRoomId,
+                        SupportMessageRepository.RoomUnreadCountSummary::getUnreadCount
+                ));
     }
 }

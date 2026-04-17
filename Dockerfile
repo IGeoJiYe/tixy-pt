@@ -13,7 +13,7 @@
 # eclipse-temurin 17 JRE (Debian 기반)
 # JDK 대신 JRE만 사용 → 이미지 크기를 줄이는 현업 관행
 #
-FROM eclipse-temurin:17-jre
+FROM eclipse-temurin:21-jre
 
 WORKDIR /app
 

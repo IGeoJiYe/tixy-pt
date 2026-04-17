@@ -1,4 +1,4 @@
-package com.tixypt.chatting.support.entity;
+package com.tixypt.chatting.support.enums;
 
 public enum SupportMessageType {
     // 일반 대화 메시지

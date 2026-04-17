@@ -16,6 +16,10 @@ public record SupportRoomQueueEvent(
         return new SupportRoomQueueEvent(roomId, SupportRoomQueueEventType.RELEASED, null);
     }
 
+    public static SupportRoomQueueEvent solved(Long roomId) {
+        return new SupportRoomQueueEvent(roomId, SupportRoomQueueEventType.SOLVED, null);
+    }
+
     // 방을 종료되어서 queue랑 운영 화면에서 정리되어야 할 때 신호
     public static SupportRoomQueueEvent closed(Long roomId) {
         return new SupportRoomQueueEvent(roomId, SupportRoomQueueEventType.CLOSED, null);

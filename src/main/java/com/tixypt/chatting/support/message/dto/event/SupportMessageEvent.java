@@ -1,8 +1,8 @@
 package com.tixypt.chatting.support.message.dto.event;
 
 import com.tixypt.chatting.support.entity.SupportMessage;
-import com.tixypt.chatting.support.entity.SupportMessageSenderType;
-import com.tixypt.chatting.support.entity.SupportMessageType;
+import com.tixypt.chatting.support.enums.SupportMessageSenderType;
+import com.tixypt.chatting.support.enums.SupportMessageType;
 
 import java.time.LocalDateTime;
 

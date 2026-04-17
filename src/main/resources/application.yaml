@@ -3,7 +3,7 @@ server:
 
 spring:
   profiles:
-    active: ${SPRING_PROFILES_ACTIVE:local}  # .env 또는 환경변수로 override 가능, 기본값 local
+    active: ${SPRING_PROFILES_ACTIVE:local}
   servlet:
     multipart:
       max-file-size: 10MB
@@ -31,11 +31,20 @@ spring:
           max-active: 8
           max-idle: 8
           min-idle: 1
+  ai:
+    model:
+      chat: none
+      embedding: none
+      image: none
+      moderation: none
+      audio:
+        speech: none
+        transcription: none
 
 jwt:
   secret-key: ${JWT_SECRET_KEY}
-  access-token-validity-time: 3600000    # 1시간 (ms)
-  refresh-token-validity-time: 604800000 # 7일 (ms)
+  access-token-validity-time: 3600000
+  refresh-token-validity-time: 604800000
 
 management:
   endpoints:
@@ -46,3 +55,12 @@ management:
 support:
   claim-timeout-minutes: 30
   claim-timeout-check-ms: 60000
+  ai:
+    mode: ${SUPPORT_AI_MODE:hybrid}
+    provider: ${SUPPORT_AI_PROVIDER:ollama}
+    rag-enabled: ${SUPPORT_AI_RAG_ENABLED:false}
+    recent-message-context-limit: ${SUPPORT_AI_RECENT_MESSAGE_CONTEXT_LIMIT:5}
+    max-response-characters: ${SUPPORT_AI_MAX_RESPONSE_CHARACTERS:300}
+    rag-top-k: ${SUPPORT_AI_RAG_TOP_K:3}
+    rag-similarity-threshold: ${SUPPORT_AI_RAG_SIMILARITY_THRESHOLD:0.55}
+    rag-resource-pattern: ${SUPPORT_AI_RAG_RESOURCE_PATTERN:classpath:/rag/support/*.md}

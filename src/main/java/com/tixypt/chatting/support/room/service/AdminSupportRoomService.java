@@ -3,13 +3,15 @@ package com.tixypt.chatting.support.room.service;
 import com.tixypt.api.member.entity.Member;
 import com.tixypt.api.member.service.MemberService;
 import com.tixypt.chatting.support.entity.SupportRoom;
-import com.tixypt.chatting.support.entity.SupportRoomStatus;
+import com.tixypt.chatting.support.enums.SupportRoomStatus;
 import com.tixypt.chatting.support.exception.SupportRoomErrorCode;
 import com.tixypt.chatting.support.exception.SupportRoomException;
 import com.tixypt.chatting.support.message.service.SupportSystemMessageService;
 import com.tixypt.chatting.support.policy.SupportAccessPolicy;
+import com.tixypt.chatting.support.room.dto.event.SupportRoomQueueEvent;
 import com.tixypt.chatting.support.room.dto.response.*;
 import com.tixypt.chatting.support.room.repository.SupportRoomRepository;
+import com.tixypt.chatting.support.websocket.SupportEventDispatcher;
 import com.tixypt.core.dto.SliceResponse;
 import com.tixypt.core.util.PageableUtil;
 import lombok.RequiredArgsConstructor;
@@ -29,20 +31,21 @@ public class AdminSupportRoomService {
     private static final long UNREAD_COUNT_NOT_USED = 0L;
 
     private final SupportRoomRepository supportRoomRepository;
-    private final MemberService memberService;
     private final SupportSystemMessageService supportSystemMessageService;
+    private final MemberService memberService;
+    private final SupportEventDispatcher supportEventDispatcher;
 
     @Value("${support.stale-room-minutes:30}")
     private long staleRoomMinutes;
 
     // 아직 상담사에게 배정되지 않은 OPEN 문의방만 대기열로 조회
     public SliceResponse<SupportRoomSummaryResponse> getQueueRooms(Long loginUserId, int page, int size) {
-        SupportAccessPolicy.validateOperator(memberService.findById(loginUserId));
+        Member loginUser = memberService.findById(loginUserId);
+        SupportAccessPolicy.validateOperator(loginUser);
         Pageable pageable = PageableUtil.createSafePageRequest(page, size);
 
         Slice<SupportRoomSummaryResponse> responseSlice = supportRoomRepository.findUnassignedOpenRooms(pageable)
                 .map(room -> SupportRoomSummaryResponse.from(room, UNREAD_COUNT_NOT_USED));
-
         return SliceResponse.of(responseSlice.hasNext(), responseSlice.getContent());
     }
 
@@ -76,7 +79,8 @@ public class AdminSupportRoomService {
     // 이미 본인이 맡은 방이면 false 반환해서 멱등하게 처리하고 다른 운영자가 맡은 방이면 접근을 막음
     @Transactional
     public ClaimSupportRoomResponse claimRoom(Long loginUserId, Long roomId) {
-        SupportAccessPolicy.validateOperator(memberService.findById(loginUserId));
+        Member loginUser = memberService.findById(loginUserId);
+        SupportAccessPolicy.validateOperator(loginUser);
 
         SupportRoom room = getRoomOrThrow(roomId);
         if (room.getCounselorUserId() != null && !room.getCounselorUserId().equals(loginUserId)) {
@@ -92,6 +96,7 @@ public class AdminSupportRoomService {
         boolean claimed = tryClaimRoom(loginUserId, roomId);
         if (claimed) {
             supportSystemMessageService.appendCounselorClaimedMessage(getRoomOrThrow(roomId));
+            supportEventDispatcher.dispatchQueueEventAfterCommit(SupportRoomQueueEvent.claimed(roomId, loginUser.getId()));
         }
         return new ClaimSupportRoomResponse(roomId, claimed);
     }
@@ -103,7 +108,7 @@ public class AdminSupportRoomService {
         Member loginUser = memberService.findById(loginUserId);
         SupportAccessPolicy.validateOperator(loginUser);
 
-        SupportRoom room = getRoomOrThrow(roomId);
+        SupportRoom room = getRoomForUpdateOrThrow(roomId);
         if (room.getCounselorUserId() == null) {
             return new ReleaseSupportRoomResponse(roomId, false);
         }
@@ -114,6 +119,7 @@ public class AdminSupportRoomService {
 
         room.releaseCounselor();
         supportSystemMessageService.appendCounselorReleasedMessage(room);
+        supportEventDispatcher.dispatchQueueEventAfterCommit(SupportRoomQueueEvent.released(roomId));
         return new ReleaseSupportRoomResponse(roomId, true);
     }
 
@@ -129,14 +135,14 @@ public class AdminSupportRoomService {
 
         Member targetCounselor = memberService.findById(targetCounselorUserId);
         SupportAccessPolicy.validateAssignableCounselor(targetCounselor);
-        SupportRoom room = getRoomOrThrow(roomId);
+        SupportRoom room = getRoomForUpdateOrThrow(roomId);
 
         if (room.getCounselorUserId() == null) {
             throw new SupportRoomException(SupportRoomErrorCode.INVALID_ROOM_ASSIGNMENT);
         }
 
         if (targetCounselor.getId().equals(room.getCounselorUserId())) {
-            // 같은 상담원으로의 재배정 요청은 배정 변경 없이 활동 시각만 갱신
+            // 같은 상담원으로의 재배정 요청은 배정 변경 없이 활동 시각만 갱신한다.
             room.touchCounselorActivity(LocalDateTime.now());
             return new ReassignSupportRoomResponse(roomId, targetCounselorUserId, false);
         }
@@ -152,13 +158,14 @@ public class AdminSupportRoomService {
         Member loginUser = memberService.findById(loginUserId);
         SupportAccessPolicy.validateOperator(loginUser);
 
-        SupportRoom room = getRoomOrThrow(roomId);
+        SupportRoom room = getRoomForUpdateOrThrow(roomId);
         validateRoomSolvable(room);
         validateSolveAccess(loginUser, room);
 
-        boolean solved = room.solve();
+        boolean solved = room.solve(LocalDateTime.now());
         if (solved) {
             supportSystemMessageService.appendSolvedMessage(room);
+            supportEventDispatcher.dispatchQueueEventAfterCommit(SupportRoomQueueEvent.solved(roomId));
         }
         return new SolveSupportRoomResponse(roomId, solved);
     }
@@ -168,17 +175,32 @@ public class AdminSupportRoomService {
     public CloseSupportRoomResponse closeRoom(Long loginUserId, Long roomId) {
         SupportAccessPolicy.validateSuperAdmin(memberService.findById(loginUserId));
 
-        SupportRoom room = getRoomOrThrow(roomId);
+        SupportRoom room = getRoomForUpdateOrThrow(roomId);
         boolean closed = room.close();
         if (closed) {
             supportSystemMessageService.appendClosedMessage(room);
+            supportEventDispatcher.dispatchQueueEventAfterCommit(SupportRoomQueueEvent.closed(roomId));
         }
         return new CloseSupportRoomResponse(roomId, closed);
     }
 
 
-    // 동시 claim 경쟁을 막기 위해서 조건부 update로 먼저 선점 시도
-    // 선점에 실패하면 최신 상태를 다시 읽어서 중복 요청인지 다른 운영자의 선점인지 구분
+
+    // 문의방을 일반 조회로 읽고 없으면 공통 예외
+    private SupportRoom getRoomOrThrow(Long roomId) {
+        return supportRoomRepository.findById(roomId)
+                .orElseThrow(() -> new SupportRoomException(SupportRoomErrorCode.ROOM_NOT_FOUND));
+    }
+
+    // 문의방 조회 수정에서 사용 row-lock
+    private SupportRoom getRoomForUpdateOrThrow(Long roomId) {
+        return supportRoomRepository.findByIdForUpdate(roomId)
+                .orElseThrow(() -> new SupportRoomException(SupportRoomErrorCode.ROOM_NOT_FOUND));
+    }
+
+    // 조건부 update로 선점 경쟁 처리
+    // update 성공 했을 때 진짜 선접을 하고 실패 후에 재조회했을 때 이미 내가 선점한 상태면 중복 요청
+    // 둘 다 아니면 다른 상담원이 먼저 가져간 거로 판단
     private boolean tryClaimRoom(Long loginUserId, Long roomId) {
         int updated = supportRoomRepository.claimCounselorIfUnassigned(roomId, loginUserId, LocalDateTime.now());
         if (updated == 1) {
@@ -193,12 +215,7 @@ public class AdminSupportRoomService {
         throw new SupportRoomException(SupportRoomErrorCode.ROOM_ACCESS_DENIED);
     }
 
-    // 운영자 쪽에서 공통으로 사용하는 문의방 조회 메서드
-    private SupportRoom getRoomOrThrow(Long roomId) {
-        return supportRoomRepository.findById(roomId)
-                .orElseThrow(() -> new SupportRoomException(SupportRoomErrorCode.ROOM_NOT_FOUND));
-    }
-
+    // solve를 할 수 있는지 역할이랑 담당자 기준으로 검증
     private void validateSolveAccess(Member loginUser, SupportRoom room) {
         if (SupportAccessPolicy.isSuperAdmin(loginUser)) {
             return;
@@ -209,6 +226,7 @@ public class AdminSupportRoomService {
         }
     }
 
+    // solve 가능한 문의방 상태인지 확인
     private void validateRoomSolvable(SupportRoom room) {
         if (room.getStatus() == SupportRoomStatus.CLOSED) {
             throw new SupportRoomException(SupportRoomErrorCode.ROOM_ALREADY_CLOSED);

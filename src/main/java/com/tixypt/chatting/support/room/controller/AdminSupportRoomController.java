@@ -1,11 +1,9 @@
 package com.tixypt.chatting.support.room.controller;
 
-import com.tixypt.chatting.support.room.dto.event.SupportRoomQueueEvent;
 import com.tixypt.chatting.support.room.dto.request.ReassignSupportRoomRequest;
 import com.tixypt.chatting.support.room.dto.request.SupportRoomSliceQueryRequest;
 import com.tixypt.chatting.support.room.dto.response.*;
 import com.tixypt.chatting.support.room.service.AdminSupportRoomService;
-import com.tixypt.chatting.support.websocket.SupportEventDispatcher;
 import com.tixypt.core.dto.ApiResponse;
 import com.tixypt.core.dto.SliceResponse;
 import com.tixypt.core.security.annotation.LoginUser;
@@ -20,7 +18,6 @@ import org.springframework.web.bind.annotation.*;
 public class AdminSupportRoomController {
 
     private final AdminSupportRoomService adminSupportRoomService;
-    private final SupportEventDispatcher supportEventDispatcher;
 
     // 운영자 화면에서 아직 누구도 맡지 않은 OPEN 문의방 대기열 조회
     @GetMapping("/queue")
@@ -61,13 +58,7 @@ public class AdminSupportRoomController {
             @LoginUser LoginUserInfoDto loginUser,
             @PathVariable Long roomId
     ) {
-        ClaimSupportRoomResponse response = adminSupportRoomService.claimRoom(loginUser.id(), roomId);
-
-        if (response.claimed()) {
-            supportEventDispatcher.dispatchQueueEvent(SupportRoomQueueEvent.claimed(roomId, loginUser.id()));
-        }
-
-        return ApiResponse.success(response);
+        return ApiResponse.success(adminSupportRoomService.claimRoom(loginUser.id(), roomId));
     }
 
     // 현재 운영자가 맡고 있는 문의방을 다시 대기열 상태로 되돌림. 이미 미배정 상태인 경우에는 추가 변경 없이 처리
@@ -76,13 +67,7 @@ public class AdminSupportRoomController {
             @LoginUser LoginUserInfoDto loginUser,
             @PathVariable Long roomId
     ) {
-        ReleaseSupportRoomResponse response = adminSupportRoomService.releaseRoom(loginUser.id(), roomId);
-
-        if (response.released()) {
-            supportEventDispatcher.dispatchQueueEvent(SupportRoomQueueEvent.released(roomId));
-        }
-
-        return ApiResponse.success(response);
+        return ApiResponse.success(adminSupportRoomService.releaseRoom(loginUser.id(), roomId));
     }
 
     // 현재 배정된 문의방을 다른 상담사에게 강제로 재배정
@@ -92,12 +77,11 @@ public class AdminSupportRoomController {
             @PathVariable Long roomId,
             @RequestBody ReassignSupportRoomRequest request
     ) {
-        ReassignSupportRoomResponse response = adminSupportRoomService.reassignRoom(
+        return ApiResponse.success(adminSupportRoomService.reassignRoom(
                 loginUser.id(),
                 roomId,
                 request == null ? null : request.targetCounselorUserId()
-        );
-        return ApiResponse.success(response);
+        ));
     }
 
     @PostMapping("/rooms/{roomId}/solve")
@@ -114,13 +98,6 @@ public class AdminSupportRoomController {
             @LoginUser LoginUserInfoDto loginUser,
             @PathVariable Long roomId
     ) {
-        CloseSupportRoomResponse response = adminSupportRoomService.closeRoom(loginUser.id(), roomId);
-
-        // close로 실제 상태가 바뀐 경우에만 CLOSED 이벤트를 전파
-        if (response.closed()) {
-            supportEventDispatcher.dispatchQueueEvent(SupportRoomQueueEvent.closed(roomId));
-        }
-
-        return ApiResponse.success(response);
+        return ApiResponse.success(adminSupportRoomService.closeRoom(loginUser.id(), roomId));
     }
 }

@@ -64,7 +64,7 @@ public class SupportSystemMessageService {
         room.updateLastMessage(savedMessage.getId(), savedMessage.getCreatedAt());
 
         if (broadcast) {
-            supportEventDispatcher.dispatchMessage(SupportMessageEvent.from(savedMessage));
+            supportEventDispatcher.dispatchMessageAfterCommit(SupportMessageEvent.from(savedMessage));
         }
     }
 

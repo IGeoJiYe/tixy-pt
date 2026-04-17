@@ -1,6 +1,5 @@
 package com.tixypt.chatting.support.websocket;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.tixypt.chatting.support.message.dto.event.SupportMessageEvent;
 import com.tixypt.chatting.support.read.dto.event.SupportReadReceiptEvent;
 import com.tixypt.chatting.support.read.dto.event.SupportUnreadSyncEvent;
@@ -10,6 +9,8 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.redis.connection.Message;
 import org.springframework.data.redis.connection.MessageListener;
 import org.springframework.stereotype.Component;
+import tools.jackson.core.JacksonException;
+import tools.jackson.databind.ObjectMapper;
 
 @Slf4j
 @Component
@@ -25,8 +26,8 @@ public class SupportRedisEventSubscriber implements MessageListener {
         try {
             SupportRedisEvent event = objectMapper.readValue(message.getBody(), SupportRedisEvent.class);
             dispatch(event);
-        } catch (Exception exception) {
-            log.error("문의 채팅 Redis 이벤트 역직렬화에 실패했습니다", exception);
+        } catch (JacksonException exception) {
+            log.warn("지원 채팅 Redis 이벤트 역직렬화에 실패했습니다.", exception);
         }
     }
 

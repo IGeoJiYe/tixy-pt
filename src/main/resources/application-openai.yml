@@ -1,0 +1,22 @@
+spring:
+  ai:
+    model:
+      chat: ${SPRING_AI_MODEL_CHAT:openai}
+      embedding: ${SPRING_AI_MODEL_EMBEDDING:openai}
+      image: none
+      moderation: none
+      audio:
+        speech: none
+        transcription: none
+    openai:
+      chat:
+        base-url: ${OPENAI_CHAT_BASE_URL:}
+        options:
+          model: ${OPENAI_CHAT_MODEL:gpt-4.1-mini}
+      embedding:
+        options:
+          model: ${OPENAI_EMBEDDING_MODEL:text-embedding-3-small}
+
+support:
+  ai:
+    provider: ${SUPPORT_AI_PROVIDER:openai}

@@ -1,5 +1,7 @@
 package com.tixypt.chatting.support.entity;
 
+import com.tixypt.chatting.support.enums.SupportMessageSenderType;
+import com.tixypt.chatting.support.enums.SupportMessageType;
 import jakarta.persistence.*;
 import lombok.AccessLevel;
 import lombok.Builder;

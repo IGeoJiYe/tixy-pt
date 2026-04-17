@@ -1,4 +1,4 @@
-package com.tixypt.chatting.support.entity;
+package com.tixypt.chatting.support.enums;
 
 public enum SupportRoomStatus {
     // 아직 상담이 진행 중이거나 다시 이어질 수 있는 방 상태

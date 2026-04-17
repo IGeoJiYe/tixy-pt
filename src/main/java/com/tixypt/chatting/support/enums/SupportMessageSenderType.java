@@ -1,4 +1,4 @@
-package com.tixypt.chatting.support.entity;
+package com.tixypt.chatting.support.enums;
 
 public enum SupportMessageSenderType {
     // 문의를 만든 고객이 보낸 메시지
