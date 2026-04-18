@@ -1,9 +1,7 @@
 package com.tixypt.chatting.support.ai.service;
 
-import com.tixypt.api.member.entity.Member;
 import com.tixypt.api.member.service.MemberService;
 import com.tixypt.chatting.support.ai.config.AiProperties;
-import com.tixypt.chatting.support.ai.dto.AiReplyResponse;
 import com.tixypt.chatting.support.ai.model.AiPromptContext;
 import com.tixypt.chatting.support.ai.model.AiReplyDraft;
 import com.tixypt.chatting.support.ai.prompt.AiPromptFactory;
@@ -11,11 +9,11 @@ import com.tixypt.chatting.support.ai.provider.AiReplyProvider;
 import com.tixypt.chatting.support.entity.SupportMessage;
 import com.tixypt.chatting.support.entity.SupportRoom;
 import com.tixypt.chatting.support.enums.SupportMessageSenderType;
+import com.tixypt.chatting.support.enums.SupportRoomStatus;
 import com.tixypt.chatting.support.exception.SupportRoomErrorCode;
 import com.tixypt.chatting.support.exception.SupportRoomException;
 import com.tixypt.chatting.support.message.dto.event.MessageEvent;
 import com.tixypt.chatting.support.message.repository.SupportMessageRepository;
-import com.tixypt.chatting.support.policy.SupportAccessPolicy;
 import com.tixypt.chatting.support.room.repository.SupportRoomRepository;
 import com.tixypt.chatting.support.websocket.SupportEventDispatcher;
 import lombok.RequiredArgsConstructor;
@@ -24,13 +22,13 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.support.TransactionOperations;
+import org.springframework.util.StringUtils;
 
-import java.time.LocalDateTime;
 import java.util.List;
 
-// AI 선응답 생성하는 것의 전체 흐름을 담당
-// AI 호출은 느릴 수 있으니까 먼저 읽기/검증/프롬프트 생성을 끝낸 뒤에 모델 호출하고
-// 마지막에 짧은 write 트랜잭션으로 다시 잠가서 메시지 저장
+// 고객 메시지 뒤에 자동으로 붙는 ai 1차 응답 생성
+// 메시지 저장 후 발행된 이벤트만 이 서비스 호출 모델 호출은 트랜잭션 밖에서 처리하고
+// 저장 직전에만 다시 방 상태를 확인
 @Service
 @RequiredArgsConstructor
 @Transactional(readOnly = true)
@@ -38,41 +36,42 @@ public class AiReplyService {
 
     private final SupportRoomRepository supportRoomRepository;
     private final SupportMessageRepository supportMessageRepository;
-    private final MemberService memberService;
     private final AiProperties aiProperties;
     private final AiPromptFactory aiPromptFactory;
     private final AiReplyProvider aiReplyProvider;
     private final SupportEventDispatcher supportEventDispatcher;
     private final TransactionOperations transactionOperations;
 
-    // 1. 현재 방 접근/상태를 잠금 없이 먼저 검증을 하고
-    // 2. 최근 대화로 프롬프트를 만든 뒤에 ai 호출하고
-    // 마지막 저장에서만 짧게 락 잡아서 ai 메시지 반영
+    // 고객 메시지 직후에 자동 응답을 붙여도 되는 방에서만 ai 응답 생성
     @Transactional(propagation = Propagation.NOT_SUPPORTED)
-    public AiReplyResponse createAiReply(Long loginUserId, Long roomId) {
-        Member loginUser = memberService.findById(loginUserId);
+    public void createAutoReplyIfEligible(Long roomId, Long triggerMessageId) {
         SupportRoom room = getRoomOrThrow(roomId);
-        validateAiReplyRequest(loginUser, room);
+        if (!isAutoReplyBlocked(room, triggerMessageId)) {
+            return;
+        }
 
         List<SupportMessage> recentMessages = fetchRecentMessages(roomId);
         String latestCustomerMessage = findLatestCustomerMessage(roomId, recentMessages);
+        if (!StringUtils.hasText(latestCustomerMessage)) {
+            return;
+        }
+
         AiPromptContext promptContext = aiPromptFactory.create(roomId, latestCustomerMessage, recentMessages);
         AiReplyDraft answer = aiReplyProvider.generate(promptContext);
 
-        return transactionOperations.execute(status -> saveAiReply(loginUser, roomId, answer));
+        transactionOperations.execute(status -> {
+            saveAutoAiReply(roomId, triggerMessageId, answer);
+            return null;
+        });
     }
 
-    // 모델 응답을 실제 ai 메시지로 저장
-    // 응답을 기다리는 종안 방 상태가 바뀔 수 있기 때문에 저장 직전에 방을 다시 조회하고 다시 한 번 검증을 한다
-    // 예를 들어서 이미 상담원이 배정되었거나 방이 종료되었으면 더 이상 ai 메시지를 넣으면 안 됨
-    private AiReplyResponse saveAiReply(Member loginUser, Long roomId, AiReplyDraft answer) {
+    // ai 응답이 준비된 뒤에도 현재 방상태가 그대로일 때만 AI 메시지를 저장
+    private void saveAutoAiReply(Long roomId, Long triggerMessageId, AiReplyDraft answer) {
         SupportRoom room = supportRoomRepository.findByIdForUpdate(roomId)
                 .orElseThrow(() -> new SupportRoomException(SupportRoomErrorCode.ROOM_NOT_FOUND));
 
-        validateAiReplyRequest(loginUser, room);
-
-        if (SupportAccessPolicy.isCounselor(loginUser)) {
-            room.touchCounselorActivity(LocalDateTime.now());
+        if (!isAutoReplyBlocked(room, triggerMessageId)) {
+            return;
         }
 
         SupportMessage aiMessage = supportMessageRepository.save(
@@ -80,18 +79,7 @@ public class AiReplyService {
         );
 
         room.updateLastMessage(aiMessage.getId(), aiMessage.getCreatedAt());
-        MessageEvent event = MessageEvent.from(aiMessage);
-        supportEventDispatcher.dispatchMessageAfterCommit(event);
-        return new AiReplyResponse(event, answer.fallback());
-    }
-
-    // ai 응답 생성 전에 필요한 공통 검증
-    // 접근 권한, 방 쓰기 가능한지, 사용자 역할, 상담원 요청 상태 확인
-    private void validateAiReplyRequest(Member loginUser, SupportRoom room) {
-        SupportAccessPolicy.validateRoomAccess(loginUser, room);
-        SupportAccessPolicy.validateRoomWritable(room);
-        SupportAccessPolicy.validateParticipantWritable(loginUser);
-        validateAiReplyAllowed(room);
+        supportEventDispatcher.dispatchMessageAfterCommit(MessageEvent.from(aiMessage));
     }
 
 
@@ -124,10 +112,24 @@ public class AiReplyService {
                         .orElse(null));
     }
 
-    // 상담원 연결 요청이 접수된 방에는 ai 응답을 막음
-    private void validateAiReplyAllowed(SupportRoom room) {
-        if (room.getCustomerRequestedCounselorAt() != null && room.getCounselorUserId() == null) {
-            throw new SupportRoomException(SupportRoomErrorCode.AI_REPLY_BLOCKED_BY_COUNSELOR_REQUEST);
+    // 자동 ai 응답이 붙어도 되는 방 상태인지 판단
+    private boolean isAutoReplyBlocked(SupportRoom room, Long triggerMessageId) {
+        if (triggerMessageId == null) {
+            return false;
         }
+
+        if (room.getStatus() == SupportRoomStatus.CLOSED) {
+            return false;
+        }
+
+        if (room.getCounselorUserId() != null) {
+            return false;
+        }
+
+        if (room.getCustomerRequestedCounselorAt() != null) {
+            return false;
+        }
+
+        return triggerMessageId.equals(room.getLastMessageId());
     }
 }

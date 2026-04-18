@@ -2,6 +2,7 @@ package com.tixypt.chatting.support.message.service;
 
 import com.tixypt.api.member.entity.Member;
 import com.tixypt.api.member.service.MemberService;
+import com.tixypt.chatting.support.ai.dto.event.AiReplyRequestEvent;
 import com.tixypt.chatting.support.entity.SupportMessage;
 import com.tixypt.chatting.support.enums.SupportMessageSenderType;
 import com.tixypt.chatting.support.entity.SupportRoom;
@@ -16,6 +17,7 @@ import com.tixypt.chatting.support.policy.SupportAccessPolicy;
 import com.tixypt.chatting.support.room.repository.SupportRoomRepository;
 import com.tixypt.chatting.support.websocket.SupportEventDispatcher;
 import lombok.RequiredArgsConstructor;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -42,6 +44,7 @@ public class MessageService {
     private final SystemMessageService systemMessageService;
     private final MemberService memberService;
     private final SupportEventDispatcher supportEventDispatcher;
+    private final ApplicationEventPublisher applicationEventPublisher;
 
 
     // 최신 메시지부터 커서 기반으로 조회
@@ -108,6 +111,7 @@ public class MessageService {
         room.updateLastMessage(savedMessage.getId(), savedMessage.getCreatedAt());
         MessageEvent event = MessageEvent.from(savedMessage);
         supportEventDispatcher.dispatchMessageAfterCommit(event);
+        publishAiReplyRequestIfNeeded(loginUser, room, savedMessage);
         return event;
     }
 
@@ -142,9 +146,23 @@ public class MessageService {
         return false;
     }
 
+    // 현재 로그인 사용자를 메시지 senderType으로 변환
     private SupportMessageSenderType senderType(Member loginUser) {
         return isCounselor(loginUser)
                 ? SupportMessageSenderType.COUNSELOR
                 : SupportMessageSenderType.USER;
+    }
+
+    // 고객 메시지 저장 완료 뒤에 자동 ai 응답이 필요한 경우에 내부 이벤트
+    private void publishAiReplyRequestIfNeeded(Member loginUser, SupportRoom room, SupportMessage savedMessage) {
+        if (SupportAccessPolicy.isCounselor(loginUser)) {
+            return;
+        }
+
+        if (room.getCounselorUserId() != null || room.getCustomerRequestedCounselorAt() != null) {
+            return;
+        }
+
+        applicationEventPublisher.publishEvent(new AiReplyRequestEvent(room.getId(), savedMessage.getId()));
     }
 }

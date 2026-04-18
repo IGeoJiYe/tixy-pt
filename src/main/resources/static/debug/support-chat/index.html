@@ -5,395 +5,216 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="color-scheme" content="light only">
     <link rel="icon" href="data:,">
-    <title>Tixy 지원 채팅 디버그 콘솔</title>
+    <title>Tixy 지원 채팅 워크스페이스</title>
     <link rel="stylesheet" href="./support-chat.css">
 </head>
 <body>
-<div class="page-shell">
-    <header class="hero">
-        <div class="hero-copy">
-            <p class="eyebrow">DEV / DEBUG ONLY</p>
-            <h1>Tixy 지원 채팅 디버그 콘솔</h1>
-            <p class="hero-description">
-                브라우저 한 화면에서 지원 채팅 REST, STOMP, 읽음 처리, AI 선응답, 운영 제어 흐름을 순서대로 검증하는
-                개발 전용 콘솔입니다. 역할 모드를 바꾸면 현재 테스트해야 할 순서와 허용된 버튼이 함께 바뀝니다.
+<div class="chat-app">
+    <header class="topbar">
+        <div class="brand-block">
+            <p class="eyebrow">TIXY SUPPORT</p>
+            <h1>지원 채팅 워크스페이스</h1>
+            <p class="topbar-note">
+                로컬 백엔드 정책을 기준으로 고객, 상담원, 운영 관리자의 실제 채팅 흐름을 확인하는 화면입니다.
+                브라우저 탭을 여러 개 열어 역할별 세션을 동시에 붙이면, 더 실전처럼 테스트할 수 있습니다.
             </p>
         </div>
-        <div class="hero-warning">
-            <strong>개발 전용 페이지</strong>
-            <span>운영 환경에는 노출하지 않고 로컬 또는 내부 개발 환경에서만 사용하세요.</span>
+
+        <div class="mode-tabs" role="tablist" aria-label="지원 채팅 역할 선택">
+            <button class="mode-tab is-active" id="user-mode-button" type="button">고객</button>
+            <button class="mode-tab" id="admin-mode-button" type="button">상담원</button>
+            <button class="mode-tab" id="super-admin-mode-button" type="button">운영 관리자</button>
+        </div>
+
+        <div class="connection-cluster">
+            <span class="connection-pill is-muted" id="connection-status">오프라인</span>
+            <button class="action-button primary compact" id="connect-button" type="button">실시간 연결</button>
+            <button class="action-button ghost compact" id="disconnect-button" type="button">연결 끊기</button>
         </div>
     </header>
 
-    <section class="contract-grid">
-        <article class="contract-card">
-            <span class="contract-label">WebSocket Endpoint</span>
-            <code id="endpoint-value">/ws/support</code>
-        </article>
-        <article class="contract-card">
-            <span class="contract-label">Publish Prefix</span>
-            <code id="publish-prefix-value">/pub/support/v1</code>
-        </article>
-        <article class="contract-card">
-            <span class="contract-label">Subscribe Prefix</span>
-            <code id="subscribe-prefix-value">/sub/support/v1</code>
-        </article>
-        <article class="contract-card">
-            <span class="contract-label">User Queue Prefix</span>
-            <code id="user-queue-prefix-value">/user/queue/support/v1</code>
-        </article>
-    </section>
-
-    <section class="mode-switch">
-        <div class="mode-copy">
-            <strong>콘솔 모드</strong>
-            <span class="meta-text">
-                USER는 고객 흐름, ADMIN은 실제 상담원 흐름, SUPER_ADMIN은 운영 전용 관리자 흐름을 검증합니다.
-            </span>
-        </div>
-        <div class="mode-toggle" role="tablist" aria-label="debug mode">
-            <button class="mode-button is-active" id="user-mode-button" type="button">USER</button>
-            <button class="mode-button" id="admin-mode-button" type="button">ADMIN</button>
-            <button class="mode-button" id="super-admin-mode-button" type="button">SUPER_ADMIN</button>
-        </div>
-    </section>
-
-    <section class="mode-overview">
-        <article class="mode-overview-card">
-            <div class="mode-overview-header">
-                <span class="mode-badge" id="mode-badge">CUSTOMER FLOW</span>
-                <h2 id="mode-title">고객 모드</h2>
-            </div>
-            <p class="mode-description" id="mode-description">
-                문의방 생성부터 메시지 전송, 읽음 처리, AI 선응답 확인까지 고객 입장에서 순서대로 검증합니다.
-            </p>
-        </article>
-        <div class="mode-step-grid">
-            <article class="mode-step-card">
-                <span class="mode-step-label" id="mode-step-1-label">STEP 1</span>
-                <strong id="mode-step-1-title">JWT 입력 후 연결</strong>
-                <p id="mode-step-1-description">토큰을 입력하고 STOMP 연결이 정상적으로 완료되는지 확인합니다.</p>
-            </article>
-            <article class="mode-step-card">
-                <span class="mode-step-label" id="mode-step-2-label">STEP 2</span>
-                <strong id="mode-step-2-title">방 선택과 구독</strong>
-                <p id="mode-step-2-description">roomId를 잡고 실시간 메시지/읽음 이벤트 구독을 준비합니다.</p>
-            </article>
-            <article class="mode-step-card">
-                <span class="mode-step-label" id="mode-step-3-label">STEP 3</span>
-                <strong id="mode-step-3-title">핵심 액션 실행</strong>
-                <p id="mode-step-3-description">현재 역할에서 허용된 버튼만 눌러 응답과 상태 변화를 확인합니다.</p>
-            </article>
-        </div>
-    </section>
-
-    <main class="workspace">
-        <aside class="control-rail">
-            <section class="panel guide-panel">
-                <div class="panel-header">
+    <main class="workspace-grid">
+        <aside class="sidebar">
+            <section class="card session-card">
+                <div class="card-header">
                     <div>
-                        <p class="panel-kicker">TEST GUIDE</p>
-                        <h2>이번 모드 체크포인트</h2>
+                        <p class="eyebrow">SESSION</p>
+                        <h2>현재 세션</h2>
                     </div>
-                    <span class="status-chip is-active" id="mode-role-chip">USER</span>
                 </div>
-                <p class="meta-text" id="mode-guide-summary">
-                    현재 모드에서 먼저 확인할 API와 STOMP 흐름을 순서대로 안내합니다.
-                </p>
-                <div class="guide-list" id="mode-guide-list"></div>
-            </section>
 
-            <section class="panel">
-                <div class="panel-header">
-                    <div>
-                        <p class="panel-kicker">STEP 1</p>
-                        <h2>연결</h2>
-                    </div>
-                    <span class="status-chip is-idle" id="connection-status">연결 안 됨</span>
-                </div>
-                <p class="meta-text">JWT를 넣고 Connect를 누르면 STOMP 연결을 시작합니다.</p>
                 <label class="field">
                     <span>JWT</span>
-                    <textarea id="jwt-input" rows="5" placeholder="Bearer 없이 JWT 본문만 붙여 넣으세요"></textarea>
+                    <textarea id="jwt-input" rows="5" placeholder="Bearer 없이 JWT 본문만 붙여 넣어 주세요."></textarea>
                 </label>
-                <label class="checkbox-row">
-                    <input type="checkbox" id="save-jwt-toggle">
-                    <span>브라우저에 JWT 저장</span>
+
+                <label class="remember-row">
+                    <input type="checkbox" id="remember-token-toggle">
+                    <span>이 역할의 JWT를 브라우저에 저장</span>
                 </label>
-                <div class="button-row">
-                    <button class="button primary" id="connect-button">Connect</button>
-                    <button class="button ghost" id="disconnect-button">Disconnect</button>
-                </div>
-                <div class="button-row">
-                    <button class="button subtle" id="load-jwt-button">저장한 JWT 불러오기</button>
-                    <button class="button subtle" id="delete-jwt-button">저장한 JWT 삭제</button>
+
+                <div class="session-meta">
+                    <div class="meta-card">
+                        <span class="meta-label">현재 역할</span>
+                        <strong id="session-role-label">고객 세션</strong>
+                    </div>
+                    <div class="meta-card">
+                        <span class="meta-label">STOMP endpoint</span>
+                        <strong id="session-endpoint-label">/ws/support</strong>
+                    </div>
                 </div>
             </section>
 
-            <section class="panel">
-                <div class="panel-header">
+            <section class="card room-panel">
+                <div class="card-header">
                     <div>
-                        <p class="panel-kicker">STEP 2</p>
-                        <h2>방 구독</h2>
+                        <p class="eyebrow">ROOMS</p>
+                        <h2 id="room-panel-title">내 문의방</h2>
                     </div>
-                    <span class="status-chip is-muted" id="subscription-status">구독 없음</span>
+                    <button class="action-button ghost compact" id="refresh-rooms-button" type="button">새로고침</button>
                 </div>
-                <p class="meta-text">roomId를 넣고 Subscribe를 누르면 메시지와 읽음 이벤트를 같은 화면에서 받습니다.</p>
-                <label class="field">
-                    <span>roomId</span>
-                    <input type="number" id="room-id-input" placeholder="예: 1">
-                </label>
-                <div class="destination-list">
-                    <div>
-                        <span>메시지 구독 경로</span>
-                        <code id="message-destination-preview">/sub/support/v1/rooms/{roomId}</code>
-                    </div>
-                    <div>
-                        <span>읽음 구독 경로</span>
-                        <code id="read-destination-preview">/sub/support/v1/rooms/{roomId}/read</code>
-                    </div>
-                    <div>
-                        <span>개인 unread 경로</span>
-                        <code>/user/queue/support/v1/read</code>
-                    </div>
-                </div>
-                <div class="button-row">
-                    <button class="button primary" id="subscribe-button">Subscribe</button>
-                    <button class="button ghost" id="unsubscribe-button">Unsubscribe</button>
-                </div>
-            </section>
 
-            <section class="panel">
-                <div class="panel-header">
-                    <h2>현재 방 상태</h2>
-                    <span class="status-chip is-muted" id="room-status">상태 미확인</span>
-                </div>
-                <p class="meta-text" id="room-status-summary">
-                    방 생성, 내 문의방 목록 조회, 문의방 종료, 큐 이벤트 수신 뒤에 현재 roomId의 OPEN/CLOSED 상태를 바로 확인합니다.
-                </p>
-            </section>
+                <div class="scope-tabs" id="room-scope-tabs"></div>
 
-            <section class="panel mode-panel" id="admin-mode-panel" hidden>
-                <div class="panel-header">
-                    <div>
-                        <p class="panel-kicker">STEP 3A</p>
-                        <h2>운영 전용 제어</h2>
-                    </div>
-                    <span class="status-chip is-muted" id="queue-subscription-status">큐 미구독</span>
+                <div class="sidebar-actions">
+                    <button class="action-button primary wide" id="create-room-button" type="button">새 문의 시작</button>
+                    <button class="action-button ghost wide" id="fetch-room-detail-button" type="button">현재 방 새로고침</button>
                 </div>
-                <p class="meta-text" id="admin-panel-description">운영자 모드에서는 대기열 조회와 방 배정, 재배정, 종료 흐름을 검증합니다.</p>
-                <div class="destination-list">
-                    <div>
-                        <span>큐 구독 경로</span>
-                        <code>/sub/support/v1/queue</code>
-                    </div>
-                </div>
-                <label class="field">
-                    <span>targetCounselorUserId</span>
-                    <input type="number" id="reassign-target-user-id-input" placeholder="예: 2">
-                </label>
-                <div class="button-stack">
-                    <button class="button ghost wide" id="subscribe-queue-button">큐 구독</button>
-                    <button class="button ghost wide" id="unsubscribe-queue-button">큐 구독 해제</button>
-                    <button class="button subtle wide" id="fetch-queue-rooms-button">대기열 조회</button>
-                    <button class="button subtle wide" id="fetch-closed-rooms-button">내 종료 이력 조회</button>
-                    <button class="button subtle wide" id="fetch-stale-rooms-button">장기 미응답 방 조회</button>
-                    <button class="button subtle wide" id="claim-room-button">방 배정</button>
-                    <button class="button subtle wide" id="release-room-button">방 배정 해제</button>
-                    <button class="button subtle wide" id="solve-room-button">해결 처리</button>
-                    <button class="button subtle wide" id="reassign-room-button">방 재배정</button>
-                    <button class="button subtle wide" id="close-room-button">문의방 종료</button>
-                </div>
-            </section>
 
-            <section class="panel">
-                <div class="panel-header">
-                    <div>
-                        <p class="panel-kicker">STEP 3B</p>
-                        <h2>메시지 전송</h2>
-                    </div>
-                </div>
-                <p class="meta-text">현재 roomId 기준으로 텍스트 메시지를 전송합니다. CLOSED 방이면 서버 차단 여부까지 함께 확인합니다.</p>
-                <p class="panel-note" id="message-mode-hint">현재 역할에서 허용된 경우에만 메시지 전송을 테스트할 수 있습니다.</p>
-                <label class="field">
-                    <span>내용</span>
-                    <textarea id="message-input" rows="4" placeholder="현재 방에 보낼 메시지를 입력하세요"></textarea>
-                </label>
-                <code class="destination-preview" id="send-destination-preview">/pub/support/v1/rooms/{roomId}/messages</code>
-                <button class="button primary wide" id="send-message-button">메시지 전송</button>
-            </section>
-
-            <section class="panel">
-                <div class="panel-header">
-                    <div>
-                        <p class="panel-kicker">STEP 3C</p>
-                        <h2>AI 선응답</h2>
-                    </div>
-                </div>
-                <p class="contract-label">
-                    현재 방의 최근 고객 메시지를 바탕으로 간단한 AI 선응답을 생성합니다.
-                    생성된 응답은 일반 메시지처럼 <code>senderType=AI</code>로 저장되고 브로드캐스트됩니다.
-                </p>
-                <p class="panel-note" id="ai-mode-hint">SUPER_ADMIN 모드에서는 운영 전용 정책 때문에 AI 초안 생성이 비활성화됩니다.</p>
-                <div class="ai-provider-card">
-                    <div class="ai-provider-header">
-                        <strong>AI Provider 상태</strong>
-                        <span class="status-chip is-muted" id="ai-provider-status">미확인</span>
-                    </div>
-                    <p class="meta-text" id="ai-provider-summary">현재 AI mode / provider / 모델 정보를 아직 조회하지 않았습니다.</p>
-                    <div class="rag-status-card">
-                        <div class="rag-status-header">
-                            <strong>RAG 상태</strong>
-                            <span class="status-chip is-muted" id="ai-rag-status">미확인</span>
-                        </div>
-                        <p class="meta-text" id="ai-rag-summary">RAG를 아직 조회하지 않았습니다.</p>
-                        <div class="rag-metric-grid">
-                            <div class="rag-metric">
-                                <span>문서 개수</span>
-                                <strong id="ai-rag-document-count">-</strong>
-                            </div>
-                            <div class="rag-metric">
-                                <span>topK</span>
-                                <strong id="ai-rag-top-k">-</strong>
-                            </div>
-                            <div class="rag-metric">
-                                <span>유사도 기준</span>
-                                <strong id="ai-rag-threshold">-</strong>
-                            </div>
-                        </div>
-                    </div>
-                    <code class="destination-preview" id="ai-config-destination-preview">GET /api/support/v1/ai/config</code>
-                    <button class="button subtle wide" id="fetch-ai-config-button">AI 설정 조회</button>
-                </div>
-                <div class="rag-status-card">
-                    <div class="rag-status-header">
-                        <strong>상담원 연결 상태</strong>
-                        <span class="status-chip is-muted" id="counselor-request-status">미확인</span>
-                    </div>
-                    <p class="meta-text" id="counselor-request-summary">문의방 상세 조회 후 상담원 연결 요청 가능 여부를 확인할 수 있습니다.</p>
-                </div>
-                <code class="destination-preview" id="ai-reply-destination-preview">POST /api/support/v1/rooms/{roomId}/ai-replies</code>
-                <button class="button ghost wide" id="create-ai-reply-button">AI 선응답 생성</button>
-                <code class="destination-preview">POST /api/support/v1/rooms/{roomId}/counselor-request</code>
-                <button class="button subtle wide" id="request-counselor-button">상담원 연결 요청</button>
-            </section>
-
-            <section class="panel">
-                <div class="panel-header">
-                    <div>
-                        <p class="panel-kicker">STEP 3D</p>
-                        <h2>읽음 처리</h2>
-                    </div>
-                </div>
-                <p class="meta-text">마지막으로 읽은 메시지 ID를 보내고 읽음 이벤트와 unread sync가 어떻게 반영되는지 확인합니다.</p>
-                <p class="panel-note" id="read-mode-hint">실제 참여자 역할일 때만 읽음 처리를 테스트할 수 있습니다.</p>
-                <label class="field">
-                    <span>lastReadMessageId</span>
-                    <input type="number" id="last-read-message-id-input" placeholder="예: 42">
-                </label>
-                <code class="destination-preview" id="read-send-destination-preview">/pub/support/v1/rooms/{roomId}/read</code>
-                <button class="button primary wide" id="send-read-button">읽음 이벤트 전송</button>
-            </section>
-
-            <section class="panel">
-                <div class="panel-header">
-                    <div>
-                        <p class="panel-kicker">STEP 3E</p>
-                        <h2>REST 테스트</h2>
-                    </div>
-                </div>
-                <p class="meta-text">방 생성, 방 목록, 방 상세, 메시지 이력을 같은 화면에서 확인합니다.</p>
-                <div class="button-stack">
-                    <button class="button primary wide" id="create-room-button">문의방 생성</button>
-                    <button class="button ghost wide" id="fetch-my-rooms-button">내 문의방 목록 조회</button>
-                    <button class="button ghost wide" id="fetch-room-detail-button">문의방 상세 조회</button>
-                </div>
-                <label class="field">
-                    <span>beforeMessageId</span>
-                    <input type="number" id="before-message-id-input" placeholder="비우면 최신 페이지를 조회합니다">
-                </label>
-                <label class="field">
-                    <span>size</span>
-                    <input type="number" id="message-size-input" value="30" min="1" max="100">
-                </label>
-                <div class="button-stack">
-                    <button class="button ghost wide" id="fetch-room-messages-button">방 메시지 이력 조회</button>
-                </div>
-            </section>
-
-            <section class="panel">
-                <div class="panel-header">
-                    <h2>로그 정리</h2>
-                </div>
-                <p class="meta-text">이벤트, 에러, RAW, REST 영역을 각각 비울 수 있습니다.</p>
-                <div class="button-stack">
-                    <button class="button subtle wide" id="clear-friendly-logs-button">이벤트 로그 비우기</button>
-                    <button class="button subtle wide" id="clear-error-logs-button">에러 로그 비우기</button>
-                    <button class="button subtle wide" id="clear-raw-logs-button">RAW 로그 비우기</button>
-                    <button class="button subtle wide" id="clear-rest-output-button">REST 응답 비우기</button>
-                </div>
+                <div class="room-list" id="room-list"></div>
             </section>
         </aside>
 
-        <section class="log-board">
-            <div class="panel tall">
-                <div class="panel-header">
-                    <h2>메시지 타임라인</h2>
-                    <span class="meta-text" id="message-count">0건</span>
-                </div>
-                <p class="meta-text">수신한 USER, COUNSELOR, AI 메시지가 시간 역순으로 쌓입니다.</p>
-                <div class="timeline" id="message-timeline"></div>
-            </div>
-
-            <div class="split-row">
-                <div class="panel">
-                    <div class="panel-header">
-                        <h2>읽음 / 시스템 이벤트</h2>
+        <section class="chat-column">
+            <section class="card conversation-card">
+                <header class="conversation-header">
+                    <div class="conversation-title-block">
+                        <p class="eyebrow" id="room-eyebrow">ROOM</p>
+                        <h2 id="room-title">대화를 시작할 방을 선택해 주세요</h2>
+                        <p id="room-subtitle">
+                            왼쪽에서 방을 고르면 메시지 이력이 열리고, 연결된 상태에서는 실시간 이벤트도 함께 반영됩니다.
+                        </p>
                     </div>
-                    <p class="meta-text">방 읽음 이벤트, 개인 unread sync, 대기열 이벤트를 함께 확인합니다.</p>
-                    <div class="event-list" id="read-event-list"></div>
-                </div>
 
-                <div class="panel">
-                    <div class="panel-header">
-                        <h2>REST 응답</h2>
+                    <div class="conversation-badges">
+                        <span class="status-badge is-muted" id="room-status-chip">미선택</span>
+                        <span class="status-badge is-muted" id="counselor-status-chip">상담원 미배정</span>
                     </div>
-                    <p class="meta-text">버튼으로 호출한 REST 응답 JSON을 그대로 보여줍니다.</p>
-                    <pre class="code-block" id="rest-output"></pre>
-                </div>
-            </div>
+                </header>
 
-            <div class="split-row">
-                <div class="panel">
-                    <div class="panel-header">
-                        <h2>이벤트 로그</h2>
+                <div class="conversation-toolbar">
+                    <p class="toolbar-guide" id="toolbar-guide">
+                        고객은 자동 AI 응답과 상담원 요청 흐름을, 상담원은 claim 이후 실제 응대 흐름을 확인할 수 있습니다.
+                    </p>
+
+                    <div class="toolbar-actions">
+                        <button class="action-button subtle" id="request-counselor-button" type="button">상담원 연결 요청</button>
+                        <button class="action-button subtle" id="claim-room-button" type="button">방 배정</button>
+                        <button class="action-button subtle" id="release-room-button" type="button">배정 해제</button>
+                        <button class="action-button subtle" id="solve-room-button" type="button">해결 처리</button>
+                        <button class="action-button subtle" id="close-room-button" type="button">문의 종료</button>
+                        <button class="action-button subtle" id="reassign-room-button" type="button">방 재배정</button>
                     </div>
-                    <p class="meta-text">성공한 흐름과 상태 변화를 짧은 문장으로 확인합니다.</p>
-                    <div class="event-list" id="friendly-log-list"></div>
                 </div>
 
-                <div class="panel">
-                    <div class="panel-header">
-                        <h2>에러 로그</h2>
+                <button class="load-older-button" id="load-older-button" type="button" hidden>이전 대화 더 보기</button>
+
+                <div class="message-empty-state" id="message-empty-state">
+                    아직 열린 대화가 없습니다. 연결 후 방을 선택하면 이력과 실시간 메시지가 여기에 표시됩니다.
+                </div>
+
+                <div class="message-stream" id="message-stream"></div>
+
+                <form class="composer" id="message-form">
+                    <label class="composer-field" for="message-input">메시지</label>
+                    <textarea id="message-input" rows="3" placeholder="메시지를 입력하세요. Enter는 줄바꿈, Ctrl/Command + Enter는 전송입니다."></textarea>
+                    <div class="composer-footer">
+                        <p class="composer-hint" id="composer-hint">
+                            방을 보고 있는 동안 최신 메시지는 자동 읽음 처리됩니다.
+                        </p>
+                        <button class="action-button primary" id="send-message-button" type="submit">보내기</button>
                     </div>
-                    <p class="meta-text">입력 오류, 서버 응답 실패, 연결 실패를 먼저 확인하는 영역입니다.</p>
-                    <div class="event-list error-list" id="error-log-list"></div>
-                </div>
-            </div>
-
-            <div class="panel raw-panel">
-                <div class="panel-header">
-                    <h2>RAW STOMP 로그</h2>
-                    <span class="meta-text">Authorization 헤더는 마스킹됩니다</span>
-                </div>
-                <p class="meta-text">실제 CONNECT, SUBSCRIBE, SEND, MESSAGE frame 원문을 확인합니다.</p>
-                <pre class="code-block" id="raw-log-output"></pre>
-            </div>
+                </form>
+            </section>
         </section>
+
+        <aside class="detail-rail">
+            <section class="card room-info-card">
+                <div class="card-header">
+                    <div>
+                        <p class="eyebrow">ROOM INFO</p>
+                        <h2>방 정보</h2>
+                    </div>
+                </div>
+
+                <dl class="info-grid">
+                    <div class="info-row">
+                        <dt>roomId</dt>
+                        <dd id="detail-room-id">-</dd>
+                    </div>
+                    <div class="info-row">
+                        <dt>customerUserId</dt>
+                        <dd id="detail-customer-user-id">-</dd>
+                    </div>
+                    <div class="info-row">
+                        <dt>counselorUserId</dt>
+                        <dd id="detail-counselor-user-id">-</dd>
+                    </div>
+                    <div class="info-row">
+                        <dt>상담원 요청 시각</dt>
+                        <dd id="detail-requested-at">-</dd>
+                    </div>
+                    <div class="info-row">
+                        <dt>마지막 메시지 ID</dt>
+                        <dd id="detail-last-message-id">-</dd>
+                    </div>
+                    <div class="info-row">
+                        <dt>마지막 메시지 시각</dt>
+                        <dd id="detail-last-message-at">-</dd>
+                    </div>
+                    <div class="info-row">
+                        <dt>생성 시각</dt>
+                        <dd id="detail-created-at">-</dd>
+                    </div>
+                    <div class="info-row">
+                        <dt>수정 시각</dt>
+                        <dd id="detail-updated-at">-</dd>
+                    </div>
+                </dl>
+            </section>
+
+            <section class="card operator-card" id="operator-card">
+                <div class="card-header">
+                    <div>
+                        <p class="eyebrow">OPERATIONS</p>
+                        <h2>운영 제어</h2>
+                    </div>
+                </div>
+
+                <label class="field" id="reassign-field">
+                    <span>재배정 대상 상담원 ID</span>
+                    <input type="number" id="reassign-target-user-id-input" placeholder="예: 2">
+                </label>
+
+                <p class="operator-hint" id="operator-hint">
+                    ADMIN은 claim 후 참여형 응대를 하고, SUPER_ADMIN은 운영 제어 중심으로 움직입니다.
+                </p>
+            </section>
+
+            <section class="card activity-card">
+                <div class="card-header">
+                    <div>
+                        <p class="eyebrow">ACTIVITY</p>
+                        <h2>실시간 활동</h2>
+                    </div>
+                </div>
+
+                <div class="activity-feed" id="activity-feed"></div>
+            </section>
+        </aside>
     </main>
 </div>
 
 <script src="./support-chat.js"></script>
 </body>
 </html>
-

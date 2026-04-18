@@ -86,10 +86,7 @@ public interface SupportRoomRepository extends JpaRepository<SupportRoom, Long> 
     @Query("""
             select room
             from SupportRoom room
-            where room.status in (
-                    com.tixypt.chatting.support.enums.SupportRoomStatus.OPEN,
-                    com.tixypt.chatting.support.enums.SupportRoomStatus.SOLVED
-                  )
+            where room.status = com.tixypt.chatting.support.enums.SupportRoomStatus.OPEN
               and room.counselorUserId is not null
               and room.counselorLastActiveAt is not null
               and room.counselorLastActiveAt <= :cutoff

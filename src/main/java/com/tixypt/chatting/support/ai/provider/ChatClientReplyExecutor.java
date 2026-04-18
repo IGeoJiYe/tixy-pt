@@ -67,10 +67,6 @@ public class ChatClientReplyExecutor {
         }
     }
 
-    public boolean isAvailable(Supplier<ChatClient> chatClientSupplier, String... requiredSettings) {
-        return resolveClient(chatClientSupplier, requiredSettings) != null;
-    }
-
     private ChatClient resolveClient(Supplier<ChatClient> chatClientSupplier, String... requiredSettings) {
         if (!hasRequiredSettings(requiredSettings)) {
             return null;

@@ -20,7 +20,7 @@ import org.springframework.context.annotation.Configuration;
 
 import java.util.List;
 
-// 문의 채팅 ai에서 사용하는 spring ai 조립하는 지즘
+// 문의 채팅 ai에서 사용하는 spring ai 조립하는 지점
 // 이 클래스는 직접 응답을 생성하지 않고 응답 생성에 필요한 걸 스프링 빈으로 준비한다
 // 1. 로컬 정책 문서를 담아 둘 VectorStore
 // 2. 질문과 관련 있는 문서를 프롬프트에 붙이는 Advisor
