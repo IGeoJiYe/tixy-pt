@@ -1,9 +1,9 @@
 package com.tixypt.chatting.support.websocket;
 
-import com.tixypt.chatting.support.message.dto.event.SupportMessageEvent;
-import com.tixypt.chatting.support.read.dto.event.SupportReadReceiptEvent;
-import com.tixypt.chatting.support.read.dto.event.SupportUnreadSyncEvent;
-import com.tixypt.chatting.support.room.dto.event.SupportRoomQueueEvent;
+import com.tixypt.chatting.support.message.dto.event.MessageEvent;
+import com.tixypt.chatting.support.read.dto.event.ReadReceiptEvent;
+import com.tixypt.chatting.support.read.dto.event.UnreadCountSyncEvent;
+import com.tixypt.chatting.support.room.dto.event.RoomQueueEvent;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.redis.connection.Message;
@@ -18,7 +18,7 @@ import tools.jackson.databind.ObjectMapper;
 public class SupportRedisEventSubscriber implements MessageListener {
 
     private final ObjectMapper objectMapper;
-    private final LocalSupportEventBroadcaster localSupportEventBroadcaster;
+    private final SupportStompEventBroadCaster supportStompEventBroadCaster;
 
     // Redis에서 받은 raw bytes를 SupportRedisEvent로 역직렬화한 뒤에 타입에 맞게 다시 로컬 브로드캐스터로 전달
     @Override
@@ -34,18 +34,18 @@ public class SupportRedisEventSubscriber implements MessageListener {
     // Redis 공통 이벤트를 실제 payload 타입으로 바꿔서 최종 전달은 로컬 broadcaster가 맡도록 함
     private void dispatch(SupportRedisEvent event) {
         switch (event.type()) {
-            case MESSAGE -> localSupportEventBroadcaster.broadcastMessage(
-                    objectMapper.convertValue(event.payload(), SupportMessageEvent.class)
+            case MESSAGE -> supportStompEventBroadCaster.broadcastMessage(
+                    objectMapper.convertValue(event.payload(), MessageEvent.class)
             );
-            case READ_ROOM -> localSupportEventBroadcaster.broadcastReadRoom(
-                    objectMapper.convertValue(event.payload(), SupportReadReceiptEvent.class)
+            case READ_ROOM -> supportStompEventBroadCaster.broadcastReadRoom(
+                    objectMapper.convertValue(event.payload(), ReadReceiptEvent.class)
             );
-            case READ_USER -> localSupportEventBroadcaster.broadcastReadUser(
+            case READ_USER -> supportStompEventBroadCaster.broadcastReadUser(
                     event.targetUserName(),
-                    objectMapper.convertValue(event.payload(), SupportUnreadSyncEvent.class)
+                    objectMapper.convertValue(event.payload(), UnreadCountSyncEvent.class)
             );
-            case QUEUE -> localSupportEventBroadcaster.broadcastQueue(
-                    objectMapper.convertValue(event.payload(), SupportRoomQueueEvent.class)
+            case QUEUE -> supportStompEventBroadCaster.broadcastQueue(
+                    objectMapper.convertValue(event.payload(), RoomQueueEvent.class)
             );
         }
     }

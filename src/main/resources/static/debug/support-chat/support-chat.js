@@ -17,8 +17,8 @@
         user: {
             badge: "CUSTOMER FLOW",
             title: "고객 모드",
-            description: "문의방 생성부터 메시지 전송, 읽음 처리, AI 선응답 확인까지 고객 입장에서 순서대로 검증합니다.",
-            guideSummary: "고객 모드에서는 문의 시작과 참여자 동작이 제대로 이어지는지 확인합니다.",
+            description: "문의방 생성부터 메시지 전송, 읽음 처리, AI 선응답, 상담원 연결 요청까지 고객 입장에서 순서대로 검증합니다.",
+            guideSummary: "고객 모드에서는 문의 시작, AI 보조, 사람 상담 요청 흐름이 자연스럽게 이어지는지 확인합니다.",
             step1Title: "JWT 입력 후 연결",
             step1Description: "고객 토큰을 넣고 STOMP 연결이 정상적으로 완료되는지 확인합니다.",
             step2Title: "문의방 생성과 구독",
@@ -28,7 +28,7 @@
             guide: [
                 "문의방 생성 버튼으로 OPEN 방 생성 또는 기존 방 재사용을 확인합니다.",
                 "생성된 roomId로 Subscribe 후 메시지와 읽음 이벤트가 들어오는지 봅니다.",
-                "메시지 전송, 읽음 처리, AI 선응답 생성까지 고객 관점 흐름을 검증합니다."
+                "메시지 전송, 읽음 처리, AI 선응답 생성, 상담원 연결 요청까지 고객 관점 흐름을 검증합니다."
             ],
             scenarios: [
                 {
@@ -44,10 +44,10 @@
                     expected: "방 이벤트와 개인 unread sync가 함께 반영되고, 읽음 기준 메시지까지 상태가 맞아야 합니다."
                 },
                 {
-                    title: "AI 선응답 보조 시나리오",
-                    summary: "고객 메시지 기준으로 AI 초안이 자연스럽게 생성되는지 확인합니다.",
-                    steps: "AI 설정 조회 → AI 선응답 생성 → 타임라인에서 senderType=AI 확인",
-                    expected: "현재 provider 상태가 보이고, AI 또는 fallback 초안이 방 메시지 흐름 안에 표시되어야 합니다."
+                    title: "AI 선응답과 상담원 요청 시나리오",
+                    summary: "AI로 먼저 보조하다가 필요하면 사람 상담으로 넘기는 흐름을 확인합니다.",
+                    steps: "AI 설정 조회 → AI 선응답 생성 → 상담원 연결 요청 → 요청 상태 배지 확인",
+                    expected: "현재 provider 상태가 보이고, 상담원 연결 요청 후에는 AI 버튼이 숨겨지며 요청 상태가 바로 보여야 합니다."
                 }
             ],
             roleChip: "USER",
@@ -56,7 +56,7 @@
             fetchStaleRoomsLabel: "장기 미응답 방 조회",
             adminDescription: "운영자 모드에서만 대기열과 강제 조치 흐름을 검증할 수 있습니다.",
             messageHint: "고객은 본인 문의방에서 메시지 전송을 테스트할 수 있습니다.",
-            aiHint: "고객은 현재 방 기준으로 AI 선응답 생성 결과를 확인할 수 있습니다.",
+            aiHint: "고객은 현재 방에서 AI 선응답을 먼저 확인하고, 부족하면 상담원 연결 요청으로 전환할 수 있습니다.",
             readHint: "고객은 본인 문의방에서 마지막 읽은 메시지 기준으로 읽음 처리를 테스트할 수 있습니다."
         },
         admin: {
@@ -157,6 +157,10 @@
         connecting: false,
         currentMode: "user",
         currentRoomStatus: null,
+        currentCounselorAssigned: false,
+        currentCounselorUserId: null,
+        currentCounselorRequestPending: false,
+        currentCounselorRequestedAt: null,
         aiConfig: null,
         showAllActions: false,
         subscriptions: new Map(),
@@ -205,6 +209,13 @@
         aiModeHint: document.getElementById("ai-mode-hint"),
         aiProviderStatus: document.getElementById("ai-provider-status"),
         aiProviderSummary: document.getElementById("ai-provider-summary"),
+        aiRagStatus: document.getElementById("ai-rag-status"),
+        aiRagSummary: document.getElementById("ai-rag-summary"),
+        aiRagDocumentCount: document.getElementById("ai-rag-document-count"),
+        aiRagTopK: document.getElementById("ai-rag-top-k"),
+        aiRagThreshold: document.getElementById("ai-rag-threshold"),
+        counselorRequestStatus: document.getElementById("counselor-request-status"),
+        counselorRequestSummary: document.getElementById("counselor-request-summary"),
         readModeHint: document.getElementById("read-mode-hint"),
         messageDestinationPreview: document.getElementById("message-destination-preview"),
         readDestinationPreview: document.getElementById("read-destination-preview"),
@@ -236,6 +247,7 @@
         sendMessage: document.getElementById("send-message-button"),
         fetchAiConfig: document.getElementById("fetch-ai-config-button"),
         createAiReply: document.getElementById("create-ai-reply-button"),
+        requestCounselor: document.getElementById("request-counselor-button"),
         sendRead: document.getElementById("send-read-button"),
         createRoom: document.getElementById("create-room-button"),
         fetchMyRooms: document.getElementById("fetch-my-rooms-button"),
@@ -299,6 +311,7 @@
         buttons.sendMessage.addEventListener("click", sendMessage);
         buttons.fetchAiConfig.addEventListener("click", fetchAiConfig);
         buttons.createAiReply.addEventListener("click", createAiReply);
+        buttons.requestCounselor.addEventListener("click", requestCounselor);
         buttons.sendRead.addEventListener("click", sendReadReceipt);
         buttons.createRoom.addEventListener("click", createRoom);
         buttons.fetchMyRooms.addEventListener("click", fetchMyRooms);
@@ -335,7 +348,7 @@
 
     function handleRoomIdChange() {
         refreshDestinationPreview();
-        setCurrentRoomStatus(null, "roomId가 바뀌어서 방 상태를 다시 확인해야 합니다.");
+        setCurrentRoomStatus(null, "roomId가 바뀌어서 방 상태를 다시 확인해야 합니다.", null);
         if (state.connected && !state.showAllActions) {
             revealNextStep(ui.subscribePanel, buttons.subscribe);
         }
@@ -620,6 +633,11 @@
             return;
         }
 
+        if (isAiReplyBlockedByCounselorRequest()) {
+            addErrorLog("상담원 연결 요청이 접수된 동안에는 AI 선응답을 생성할 수 없습니다.");
+            return;
+        }
+
         fetchJson(CONTRACT.supportApiPrefix + "/rooms/" + roomId + "/ai-replies", "AI 선응답 생성", {
             method: "POST"
         }).then(function (result) {
@@ -634,6 +652,52 @@
             .then(function (result) {
                 renderAiConfig(result.body && result.body.data ? result.body.data : null);
             });
+    }
+
+    function requestCounselor() {
+        if (state.currentMode !== "user") {
+            addErrorLog("상담원 연결 요청은 USER 모드에서만 테스트할 수 있습니다.");
+            return;
+        }
+
+        const roomId = parseRoomId();
+        if (!roomId) {
+            return;
+        }
+
+        if (isRoomClosed()) {
+            addErrorLog("CLOSED 문의방에서는 상담원 연결 요청을 보낼 수 없습니다.");
+            return;
+        }
+
+        fetchJson(CONTRACT.supportApiPrefix + "/rooms/" + roomId + "/counselor-request", "상담원 연결 요청", {
+            method: "POST"
+        }).then(function (result) {
+            const data = result.body && result.body.data ? result.body.data : null;
+            if (!data) {
+                return;
+            }
+
+            syncCurrentRoomMetadata(data);
+            setCurrentRoomStatus(
+                data.status || "OPEN",
+                "상담원 연결 요청 결과를 현재 roomId 상태에 반영했습니다."
+            );
+
+            if (data.requested) {
+                addFriendlyLog("상담원 연결 요청이 접수되었습니다. AI 선응답 버튼은 배정 전까지 숨겨집니다.");
+                return;
+            }
+
+            if (data.alreadyAssigned) {
+                addFriendlyLog("이미 상담원이 배정된 문의방이라 추가 요청을 보내지 않았습니다.");
+                return;
+            }
+
+            if (data.alreadyRequested) {
+                addFriendlyLog("이미 상담원 연결 요청이 접수된 문의방입니다.");
+            }
+        });
     }
 
     function sendReadReceipt() {
@@ -673,7 +737,14 @@
             if (roomId) {
                 elements.roomIdInput.value = roomId;
                 refreshDestinationPreview();
-                setCurrentRoomStatus("OPEN", "방을 새로 만들었으므로 현재 roomId 상태를 OPEN으로 반영했습니다.");
+                setCurrentRoomStatus(
+                    "OPEN",
+                    "방을 새로 만들었으므로 현재 roomId 상태를 OPEN으로 반영했습니다.",
+                    {
+                        counselorUserId: null,
+                        customerRequestedCounselorAt: null
+                    }
+                );
                 addFriendlyLog("생성된 roomId를 입력칸에 반영했습니다. roomId=" + roomId);
                 revealNextStep(ui.subscribePanel, buttons.subscribe);
             }
@@ -777,6 +848,7 @@
             method: "POST",
             body: JSON.stringify({ targetCounselorUserId: targetCounselorUserId })
         }).then(function () {
+            markCounselorAssigned(targetCounselorUserId);
             setCurrentRoomStatus("OPEN", "방 재배정 후에도 방 상태는 OPEN으로 유지됩니다.");
         });
     }
@@ -1051,6 +1123,7 @@
         updateSubscriptionStatus();
         updateQueueSubscriptionStatus();
         updateRoomStatus();
+        updateCounselorRequestStatus();
         updateAiProviderStatus();
         updateActionButtons();
         updateStepProgress();
@@ -1097,10 +1170,44 @@
         setStatusChip(elements.roomStatus, "is-muted", "상태 미확인");
     }
 
+    function updateCounselorRequestStatus() {
+        if (!hasCurrentRoomId()) {
+            setStatusChip(elements.counselorRequestStatus, "is-muted", "미확인");
+            elements.counselorRequestSummary.textContent = "roomId를 정한 뒤 문의방 상세 조회를 하면 상담원 연결 상태를 바로 확인할 수 있습니다.";
+            return;
+        }
+
+        if (state.currentCounselorAssigned) {
+            setStatusChip(elements.counselorRequestStatus, "is-connected", "배정됨");
+            elements.counselorRequestSummary.textContent = "이미 상담원이 배정된 문의방입니다. 이 상태에서는 상담원 연결 요청 버튼이 보이지 않습니다.";
+            return;
+        }
+
+        if (state.currentCounselorRequestPending) {
+            setStatusChip(elements.counselorRequestStatus, "is-pending", "요청됨");
+            elements.counselorRequestSummary.textContent = "상담원 연결 요청이 접수된 상태입니다. 배정 전까지 AI 선응답 버튼은 숨겨집니다.";
+            return;
+        }
+
+        if (state.currentMode === "user" && state.currentRoomStatus && !isRoomClosed()) {
+            setStatusChip(elements.counselorRequestStatus, "is-muted", "요청 가능");
+            elements.counselorRequestSummary.textContent = "아직 상담원 연결 요청이 없는 문의방입니다. AI로 부족할 때 버튼으로 사람 상담을 요청할 수 있습니다.";
+            return;
+        }
+
+        setStatusChip(elements.counselorRequestStatus, "is-muted", "대상 아님");
+        elements.counselorRequestSummary.textContent = "현재 모드 또는 문의방 상태에서는 상담원 연결 요청을 직접 보내지 않습니다.";
+    }
+
     function updateAiProviderStatus() {
         if (!state.aiConfig) {
             setStatusChip(elements.aiProviderStatus, "is-muted", "미확인");
             elements.aiProviderSummary.textContent = "현재 AI mode / provider / 모델 정보를 아직 조회하지 않았습니다.";
+            setStatusChip(elements.aiRagStatus, "is-muted", "미확인");
+            elements.aiRagSummary.textContent = "RAG 활성화 여부와 준비 상태를 아직 조회하지 않았습니다.";
+            elements.aiRagDocumentCount.textContent = "-";
+            elements.aiRagTopK.textContent = "-";
+            elements.aiRagThreshold.textContent = "-";
             return;
         }
 
@@ -1114,9 +1221,36 @@
         elements.aiProviderSummary.textContent =
             "mode=" + safe(state.aiConfig.mode)
             + " / provider=" + provider
-            + " / rag=" + (!!state.aiConfig.ragEnabled)
             + " / model=" + resolveProviderModel(state.aiConfig)
             + " / recentMessages=" + safe(state.aiConfig.recentMessageContextLimit);
+
+        const ragEnabled = !!state.aiConfig.ragEnabled;
+        const ragReady = !!state.aiConfig.ragAdvisorReady && !!state.aiConfig.ragVectorStoreReady;
+        setStatusChip(
+            elements.aiRagStatus,
+            ragEnabled ? (ragReady ? "is-connected" : "is-pending") : "is-muted",
+            ragEnabled ? (ragReady ? "RAG 준비됨" : "RAG 부분 준비") : "RAG 꺼짐"
+        );
+        elements.aiRagSummary.textContent = buildRagSummary(state.aiConfig, ragEnabled, ragReady);
+        elements.aiRagDocumentCount.textContent = safe(state.aiConfig.ragDocumentCount);
+        elements.aiRagTopK.textContent = safe(state.aiConfig.ragTopK);
+        elements.aiRagThreshold.textContent = safe(state.aiConfig.ragSimilarityThreshold);
+    }
+
+    function buildRagSummary(config, ragEnabled, ragReady) {
+        if (!ragEnabled) {
+            return "현재는 RAG를 사용하지 않고, 최근 대화와 system prompt만으로 AI 호출을 진행합니다.";
+        }
+
+        if (ragReady) {
+            return "RAG가 활성화되어 있고 Advisor와 VectorStore도 준비되었습니다. 현재 질문과 비슷한 정책 문서를 찾아 prompt에 함께 붙입니다.";
+        }
+
+        if (!!config.ragAdvisorReady || !!config.ragVectorStoreReady) {
+            return "RAG는 켜져 있지만 준비 상태가 완전하지 않습니다. 일부 구성은 열려 있으나 실제 문서 검색이 빠질 수 있습니다.";
+        }
+
+        return "RAG는 켜져 있지만 아직 Advisor 또는 VectorStore가 준비되지 않았습니다. 이 경우 일반 AI 호출처럼 동작할 수 있습니다.";
     }
 
     function updateActionButtons() {
@@ -1139,7 +1273,8 @@
 
         setButtonVisibility(buttons.sendMessage, state.connected && hasRoomId && !roomClosed && participantMode);
         setButtonVisibility(buttons.sendRead, state.connected && hasRoomId && !roomClosed && participantMode);
-        setButtonVisibility(buttons.createAiReply, hasRoomId && !roomClosed && participantMode);
+        setButtonVisibility(buttons.createAiReply, hasRoomId && !roomClosed && participantMode && !isAiReplyBlockedByCounselorRequest());
+        setButtonVisibility(buttons.requestCounselor, canRequestCounselor());
         setButtonVisibility(buttons.fetchAiConfig, true);
 
         setButtonVisibility(buttons.createRoom, customerCreateAllowed);
@@ -1318,8 +1453,11 @@
         element.textContent = text;
     }
 
-    function setCurrentRoomStatus(status, summary) {
+    function setCurrentRoomStatus(status, summary, roomMeta) {
         state.currentRoomStatus = status || null;
+        if (arguments.length >= 3) {
+            syncCurrentRoomMetadata(roomMeta);
+        }
         refreshUi();
         if (summary) {
             elements.roomStatusSummary.textContent = summary;
@@ -1357,6 +1495,42 @@
         return "-";
     }
 
+    function syncCurrentRoomMetadata(room) {
+        if (!room) {
+            state.currentCounselorAssigned = false;
+            state.currentCounselorUserId = null;
+            state.currentCounselorRequestPending = false;
+            state.currentCounselorRequestedAt = null;
+            return;
+        }
+
+        state.currentCounselorUserId = room.counselorUserId == null ? null : Number(room.counselorUserId);
+        state.currentCounselorAssigned = room.counselorUserId != null;
+        state.currentCounselorRequestedAt = room.customerRequestedCounselorAt || null;
+        state.currentCounselorRequestPending = !state.currentCounselorAssigned && !!state.currentCounselorRequestedAt;
+    }
+
+    function markCounselorRequested(requestedAt) {
+        state.currentCounselorAssigned = false;
+        state.currentCounselorUserId = null;
+        state.currentCounselorRequestPending = true;
+        state.currentCounselorRequestedAt = requestedAt || state.currentCounselorRequestedAt || null;
+    }
+
+    function markCounselorAssigned(counselorUserId) {
+        state.currentCounselorAssigned = true;
+        state.currentCounselorUserId = counselorUserId == null ? state.currentCounselorUserId : Number(counselorUserId);
+        state.currentCounselorRequestPending = false;
+        state.currentCounselorRequestedAt = null;
+    }
+
+    function clearCounselorAssignment() {
+        state.currentCounselorAssigned = false;
+        state.currentCounselorUserId = null;
+        state.currentCounselorRequestPending = false;
+        state.currentCounselorRequestedAt = null;
+    }
+
     function syncRoomStatusFromRoomList(rooms, sourceLabel) {
         const roomId = parseRoomId(false);
         const items = extractRoomListItems(rooms);
@@ -1365,7 +1539,7 @@
         }
 
         if (!items.length) {
-            setCurrentRoomStatus(null, safe(sourceLabel) + " 조회 결과가 비어 있어서 현재 roomId 상태를 확인하지 못했습니다.");
+            setCurrentRoomStatus(null, safe(sourceLabel) + " 조회 결과가 비어 있어서 현재 roomId 상태를 확인하지 못했습니다.", null);
             return;
         }
 
@@ -1374,13 +1548,14 @@
         });
 
         if (!matchedRoom || !matchedRoom.status) {
-            setCurrentRoomStatus(null, safe(sourceLabel) + " 조회 결과에 현재 roomId가 없어 상태를 확인하지 못했습니다.");
+            setCurrentRoomStatus(null, safe(sourceLabel) + " 조회 결과에 현재 roomId가 없어 상태를 확인하지 못했습니다.", null);
             return;
         }
 
         setCurrentRoomStatus(
             matchedRoom.status,
-            "목록 조회 결과 기준 현재 roomId 상태를 " + matchedRoom.status + "로 반영했습니다."
+            "목록 조회 결과 기준 현재 roomId 상태를 " + matchedRoom.status + "로 반영했습니다.",
+            matchedRoom
         );
     }
 
@@ -1392,7 +1567,8 @@
 
         setCurrentRoomStatus(
             room.status,
-            "상세 조회 결과 기준 현재 roomId 상태를 " + room.status + "로 반영했습니다."
+            "상세 조회 결과 기준 현재 roomId 상태를 " + room.status + "로 반영했습니다.",
+            room
         );
         if (state.connected && !state.showAllActions) {
             revealNextActionPanel();
@@ -1402,6 +1578,7 @@
     function syncRoomStatusFromAdminMutation(action, result) {
         const data = result && result.body ? result.body.data : null;
         if (action === "close" && data && data.closed) {
+            clearCounselorAssignment();
             setCurrentRoomStatus("CLOSED", "문의방 종료가 반영되어 현재 roomId 상태를 CLOSED로 바꿨습니다.");
             return;
         }
@@ -1412,16 +1589,19 @@
         }
 
         if (action === "claim") {
+            markCounselorAssigned(data && data.counselorUserId);
             setCurrentRoomStatus("OPEN", "방 배정 후에도 방 상태는 OPEN으로 유지됩니다.");
             return;
         }
 
         if (action === "release") {
+            clearCounselorAssignment();
             setCurrentRoomStatus("OPEN", "방 배정 해제 후에도 방 상태는 OPEN으로 유지됩니다.");
             return;
         }
 
         if (action === "reassign") {
+            markCounselorAssigned(data && data.counselorUserId);
             setCurrentRoomStatus("OPEN", "방 재배정 후에도 방 상태는 OPEN으로 유지됩니다.");
         }
     }
@@ -1433,11 +1613,25 @@
         }
 
         if (payload.eventType === "CLOSED") {
+            clearCounselorAssignment();
             setCurrentRoomStatus("CLOSED", "큐 이벤트 기준 현재 roomId 상태를 CLOSED로 반영했습니다.");
             return;
         }
 
-        if (payload.eventType === "CLAIMED" || payload.eventType === "RELEASED") {
+        if (payload.eventType === "REQUESTED") {
+            markCounselorRequested(state.currentCounselorRequestedAt);
+            setCurrentRoomStatus("OPEN", "큐 이벤트 기준 현재 roomId가 상담원 연결 요청 상태로 반영되었습니다.");
+            return;
+        }
+
+        if (payload.eventType === "CLAIMED") {
+            markCounselorAssigned(payload.counselorUserId);
+            setCurrentRoomStatus("OPEN", "큐 이벤트 기준 현재 roomId 상태를 OPEN으로 반영했습니다.");
+            return;
+        }
+
+        if (payload.eventType === "RELEASED") {
+            clearCounselorAssignment();
             setCurrentRoomStatus("OPEN", "큐 이벤트 기준 현재 roomId 상태를 OPEN으로 반영했습니다.");
         }
     }
@@ -1446,6 +1640,18 @@
         const content = payload && payload.content ? String(payload.content) : "";
 
         if (!content) {
+            return;
+        }
+
+        if (content.indexOf("상담원 연결 요청이 접수") > -1) {
+            markCounselorRequested(payload && payload.createdAt);
+            setCurrentRoomStatus("OPEN", "SYSTEM 안내 기준 현재 roomId를 상담원 연결 요청 상태로 반영했습니다.");
+            return;
+        }
+
+        if (content.indexOf("상담원이 연결") > -1) {
+            markCounselorAssigned(null);
+            setCurrentRoomStatus("OPEN", "SYSTEM 안내 기준 현재 roomId에 상담원이 배정된 상태를 반영했습니다.");
             return;
         }
 
@@ -1460,6 +1666,7 @@
         }
 
         if (content.indexOf("자동 종료") > -1 || content.indexOf("문의가 종료") > -1) {
+            clearCounselorAssignment();
             setCurrentRoomStatus("CLOSED", "SYSTEM 안내 기준 현재 roomId 상태를 CLOSED로 반영했습니다.");
         }
     }
@@ -1550,6 +1757,19 @@
 
     function canCreateCustomerRoom() {
         return state.currentMode === "user";
+    }
+
+    function canRequestCounselor() {
+        return state.currentMode === "user"
+            && hasCurrentRoomId()
+            && !!state.currentRoomStatus
+            && !isRoomClosed()
+            && !state.currentCounselorAssigned
+            && !state.currentCounselorRequestPending;
+    }
+
+    function isAiReplyBlockedByCounselorRequest() {
+        return state.currentCounselorRequestPending && !state.currentCounselorAssigned;
     }
 
     function extractRoomListItems(rooms) {

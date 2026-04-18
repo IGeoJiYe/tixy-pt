@@ -1,6 +1,6 @@
 package com.tixypt.chatting.support.ai.provider;
 
-import com.tixypt.chatting.support.ai.config.SupportAiProperties;
+import com.tixypt.chatting.support.ai.config.AiProperties;
 import com.tixypt.chatting.support.ai.model.AiPromptContext;
 import com.tixypt.chatting.support.ai.model.AiReplyDraft;
 import lombok.RequiredArgsConstructor;
@@ -17,13 +17,13 @@ import org.springframework.util.StringUtils;
 @RequiredArgsConstructor
 public class AiReplyProviderRouter implements AiReplyProvider {
 
-    private final SupportAiProperties supportAiProperties;
+    private final AiProperties aiProperties;
     private final PolicyBasedReplyProvider policyBasedReplyProvider;
     private final AiReplyProviderRegistry aiReplyProviderRegistry;
 
     @Override
     public AiReplyDraft generate(AiPromptContext promptContext) {
-        return switch (supportAiProperties.getMode()) {
+        return switch (aiProperties.getMode()) {
             case POLICY -> policyBasedReplyProvider.generate(promptContext);
             case PROVIDER -> generateWithSelectedProvider(promptContext);
             case HYBRID -> generateHybrid(promptContext);
@@ -40,7 +40,7 @@ public class AiReplyProviderRouter implements AiReplyProvider {
     }
 
     private AiReplyDraft generateWithSelectedProvider(AiPromptContext promptContext) {
-        return aiReplyProviderRegistry.generate(supportAiProperties.getProvider(), promptContext);
+        return aiReplyProviderRegistry.generate(aiProperties.getProvider(), promptContext);
     }
 
     // provider 응답이 실제 서비스에 써도 되는 최소 조건만 판단 내용이 비어 있거나 fallback 표시 있으면 빽

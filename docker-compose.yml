@@ -50,6 +50,23 @@ services:
       retries: 5
     networks:
       - spring-net
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: tixy-pt-app
+    restart: unless-stopped
+    env_file:
+      - .env
+    ports:
+      - "8081:8081"
+    depends_on:
+      mysql:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - spring-net
 
 volumes:
   mysql_data:

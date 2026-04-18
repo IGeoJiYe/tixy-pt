@@ -345,6 +345,48 @@ input {
     gap: 12px;
 }
 
+.rag-status-card {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    padding: 12px 14px;
+    border-radius: 14px;
+    background: rgba(255, 255, 255, 0.7);
+    border: 1px solid rgba(77, 55, 35, 0.08);
+}
+
+.rag-status-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+}
+
+.rag-metric-grid {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 10px;
+}
+
+.rag-metric {
+    padding: 10px 12px;
+    border-radius: 12px;
+    background: rgba(45, 106, 90, 0.06);
+    border: 1px solid rgba(45, 106, 90, 0.08);
+}
+
+.rag-metric span {
+    display: block;
+    margin-bottom: 4px;
+    color: var(--text-muted);
+    font-size: 0.78rem;
+}
+
+.rag-metric strong {
+    font-size: 0.98rem;
+    color: var(--primary);
+}
+
 .guide-item {
     display: grid;
     grid-template-columns: 42px minmax(0, 1fr);

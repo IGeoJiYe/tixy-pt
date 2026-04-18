@@ -10,6 +10,7 @@ public class SupportSystemMessageTemplate {
     public static final String ROOM_REOPENED = "고객 응답으로 문의가 다시 진행 상태로 변경되었습니다.";
     public static final String ROOM_CLOSED = "문의가 종료되었습니다.";
     public static final String ROOM_AUTO_CLOSED = "추가 응답이 없어 문의가 자동 종료되었습니다.";
+    public static final String COUNSELOR_REQUESTED = "상담원 연결 요청이 접수되었습니다. 순서대로 연결해 드릴게요.";
 
     private SupportSystemMessageTemplate() {
     }

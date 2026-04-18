@@ -2,7 +2,7 @@ package com.tixypt.chatting.support.ai.provider;
 
 import com.tixypt.chatting.support.ai.model.AiPromptContext;
 import com.tixypt.chatting.support.ai.model.AiReplyDraft;
-import com.tixypt.chatting.support.ai.prompt.SupportAiReplyPolicy;
+import com.tixypt.chatting.support.ai.prompt.AiReplyPolicy;
 import org.springframework.stereotype.Component;
 import org.springframework.util.StringUtils;
 
@@ -18,26 +18,26 @@ public class PolicyBasedReplyProvider implements AiReplyProvider {
         String normalizedMessage = normalize(promptContext.latestCustomerMessage());
 
         if (!StringUtils.hasText(normalizedMessage)) {
-            return AiReplyDraft.normal(SupportAiReplyPolicy.EMPTY_CUSTOMER_MESSAGE_REPLY);
+            return AiReplyDraft.normal(AiReplyPolicy.EMPTY_CUSTOMER_MESSAGE_REPLY);
         }
 
-        if (containsAny(normalizedMessage, SupportAiReplyPolicy.REFUND_KEYWORDS)) {
-            return AiReplyDraft.normal(SupportAiReplyPolicy.REFUND_REPLY);
+        if (containsAny(normalizedMessage, AiReplyPolicy.REFUND_KEYWORDS)) {
+            return AiReplyDraft.normal(AiReplyPolicy.REFUND_REPLY);
         }
 
-        if (containsAny(normalizedMessage, SupportAiReplyPolicy.DELIVERY_KEYWORDS)) {
-            return AiReplyDraft.normal(SupportAiReplyPolicy.DELIVERY_REPLY);
+        if (containsAny(normalizedMessage, AiReplyPolicy.DELIVERY_KEYWORDS)) {
+            return AiReplyDraft.normal(AiReplyPolicy.DELIVERY_REPLY);
         }
 
-        if (containsAny(normalizedMessage, SupportAiReplyPolicy.SCHEDULE_KEYWORDS)) {
-            return AiReplyDraft.normal(SupportAiReplyPolicy.SCHEDULE_REPLY);
+        if (containsAny(normalizedMessage, AiReplyPolicy.SCHEDULE_KEYWORDS)) {
+            return AiReplyDraft.normal(AiReplyPolicy.SCHEDULE_REPLY);
         }
 
-        if (containsAny(normalizedMessage, SupportAiReplyPolicy.PAYMENT_KEYWORDS)) {
-            return AiReplyDraft.normal(SupportAiReplyPolicy.PAYMENT_REPLY);
+        if (containsAny(normalizedMessage, AiReplyPolicy.PAYMENT_KEYWORDS)) {
+            return AiReplyDraft.normal(AiReplyPolicy.PAYMENT_REPLY);
         }
 
-        return AiReplyDraft.normal(SupportAiReplyPolicy.DEFAULT_REPLY);
+        return AiReplyDraft.normal(AiReplyPolicy.DEFAULT_REPLY);
     }
 
     private String normalize(String message) {

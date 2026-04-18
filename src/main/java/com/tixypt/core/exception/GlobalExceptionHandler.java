@@ -1,7 +1,7 @@
 package com.tixypt.core.exception;
 
 import com.tixypt.chatting.support.exception.SupportRoomErrorCode;
-import com.tixypt.chatting.support.message.dto.request.SupportMessageQueryRequest;
+import com.tixypt.chatting.support.message.dto.request.MessageCursorRequest;
 import com.tixypt.core.dto.ApiResponse;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.extern.slf4j.Slf4j;
@@ -138,7 +138,7 @@ public class GlobalExceptionHandler {
     }
 
     private ErrorCode resolveFieldValidationErrorCode(Object target, FieldError fieldError) {
-        if (target instanceof SupportMessageQueryRequest && fieldError != null) {
+        if (target instanceof MessageCursorRequest && fieldError != null) {
             if ("beforeMessageId".equals(fieldError.getField())) {
                 return SupportRoomErrorCode.INVALID_MESSAGE_CURSOR;
             }

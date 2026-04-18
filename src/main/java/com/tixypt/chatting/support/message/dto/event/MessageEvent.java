@@ -1,0 +1,30 @@
+package com.tixypt.chatting.support.message.dto.event;
+
+import com.tixypt.chatting.support.entity.SupportMessage;
+import com.tixypt.chatting.support.enums.SupportMessageSenderType;
+import com.tixypt.chatting.support.enums.SupportMessageType;
+
+import java.time.LocalDateTime;
+
+public record MessageEvent(
+        Long roomId,
+        Long messageId,
+        Long senderUserId,
+        SupportMessageSenderType senderType,
+        SupportMessageType messageType,
+        String content,
+        LocalDateTime createdAt
+) {
+    // 엔티티를 STOMP 전송 전용 이벤트 형태로 바꿈
+    public static MessageEvent from(SupportMessage message) {
+        return new MessageEvent(
+                message.getRoom().getId(),
+                message.getId(),
+                message.getSenderUserId(),
+                message.getSenderType(),
+                message.getMessageType(),
+                message.getContent(),
+                message.getCreatedAt()
+        );
+    }
+}

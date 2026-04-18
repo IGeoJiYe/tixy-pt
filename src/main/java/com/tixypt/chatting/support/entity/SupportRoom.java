@@ -70,6 +70,9 @@ public class SupportRoom extends BaseEntity {
     @Column(name = "counselor_last_active_at")
     private LocalDateTime counselorLastActiveAt;
 
+    @Column(name = "customer_requested_counselor_at")
+    private LocalDateTime customerRequestedCounselorAt;
+
     @Builder
     private SupportRoom(
             Long customerUserId,
@@ -83,7 +86,8 @@ public class SupportRoom extends BaseEntity {
             Long counselorLastReadMessageId,
             LocalDateTime customerLastReadAt,
             LocalDateTime counselorLastReadAt,
-            LocalDateTime counselorLastActiveAt
+            LocalDateTime counselorLastActiveAt,
+            LocalDateTime customerRequestedCounselorAt
     ) {
         this.customerUserId = customerUserId;
         this.counselorUserId = counselorUserId;
@@ -97,6 +101,7 @@ public class SupportRoom extends BaseEntity {
         this.customerLastReadAt = customerLastReadAt;
         this.counselorLastReadAt = counselorLastReadAt;
         this.counselorLastActiveAt = counselorLastActiveAt;
+        this.customerRequestedCounselorAt = customerRequestedCounselorAt;
     }
 
     public static SupportRoom open(Long customerUserId, Long counselorUserId) {
@@ -124,6 +129,16 @@ public class SupportRoom extends BaseEntity {
         this.counselorLastActiveAt = null;
     }
 
+    // 문의방을 최종 종료 상태로 바꿈
+    public boolean requestCounselor(LocalDateTime requestedAt) {
+        if (this.counselorUserId != null || this.customerRequestedCounselorAt != null) {
+            return false;
+        }
+
+        this.customerRequestedCounselorAt = requestedAt;
+        return true;
+    }
+
     public void forceAssignCounselor(Long counselorUserId, LocalDateTime activeAt) {
         // 재배정 할 때 현재 담당자랑 마지막 담당 이력을 새 삳담원으로 함께 맞춤
         this.counselorUserId = counselorUserId;
@@ -131,6 +146,7 @@ public class SupportRoom extends BaseEntity {
         this.counselorLastReadMessageId = null;
         this.counselorLastReadAt = null;
         this.counselorLastActiveAt = activeAt;
+        this.customerRequestedCounselorAt = null;
     }
 
     // 문의방을 최종 종료 상태로 바꿈
@@ -154,6 +170,7 @@ public class SupportRoom extends BaseEntity {
         this.counselorLastReadMessageId = null;
         this.counselorLastReadAt = null;
         this.counselorLastActiveAt = null;
+        this.customerRequestedCounselorAt = null;
         return true;
     }
 

@@ -73,7 +73,11 @@ public interface SupportRoomRepository extends JpaRepository<SupportRoom, Long> 
             from SupportRoom room
             where room.counselorUserId is null
               and room.status = com.tixypt.chatting.support.enums.SupportRoomStatus.OPEN
-            order by coalesce(room.lastMessageAt, room.createdAt) desc, room.id desc
+            order by
+                case when room.customerRequestedCounselorAt is null then 1 else 0 end asc,
+                room.customerRequestedCounselorAt asc,
+                coalesce(room.lastMessageAt, room.createdAt) desc,
+                room.id desc
             """)
     Slice<SupportRoom> findUnassignedOpenRooms(Pageable pageable);
 
@@ -99,7 +103,8 @@ public interface SupportRoomRepository extends JpaRepository<SupportRoom, Long> 
     @Query("""
             update SupportRoom room
             set room.counselorUserId = :counselorUserId,
-                room.counselorLastActiveAt = :claimedAt
+                room.counselorLastActiveAt = :claimedAt,
+                room.customerRequestedCounselorAt = null
             where room.id = :roomId
               and room.counselorUserId is null
               and room.status = com.tixypt.chatting.support.enums.SupportRoomStatus.OPEN

@@ -1,6 +1,6 @@
 package com.tixypt.chatting.support.ai.provider;
 
-import com.tixypt.chatting.support.ai.config.SupportAiAdvisorConfig.SupportAiChatClientFactory;
+import com.tixypt.chatting.support.ai.config.AiAdvisorConfig.SupportAiChatClientFactory;
 import com.tixypt.chatting.support.ai.model.AiPromptContext;
 import com.tixypt.chatting.support.ai.model.AiReplyDraft;
 import lombok.RequiredArgsConstructor;

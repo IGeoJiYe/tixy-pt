@@ -12,7 +12,7 @@ spring:
       chat:
         base-url: ${OPENAI_CHAT_BASE_URL:}
         options:
-          model: ${OPENAI_CHAT_MODEL:gpt-4.1-mini}
+          model: ${OPENAI_CHAT_MODEL:}
       embedding:
         options:
           model: ${OPENAI_EMBEDDING_MODEL:text-embedding-3-small}
