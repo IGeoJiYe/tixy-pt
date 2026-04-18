@@ -34,11 +34,6 @@ public class SystemMessageService {
     }
 
     @Transactional
-    public void appendCounselorReassignedMessage(SupportRoom room) {
-        save(room, SupportSystemMessageTemplate.COUNSELOR_REASSIGNED, true);
-    }
-
-    @Transactional
     public void appendSolvedMessage(SupportRoom room) {
         save(room, SupportSystemMessageTemplate.ROOM_SOLVED, true);
     }

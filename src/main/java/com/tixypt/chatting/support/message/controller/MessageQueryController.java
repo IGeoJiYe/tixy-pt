@@ -23,10 +23,10 @@ public class MessageQueryController {
             @LoginUser LoginUserInfoDto loginUser,
             @PathVariable Long roomId,
             @Valid @ModelAttribute MessageCursorRequest query
-            ) {
+    ) {
         return ApiResponse.success(
                 messageService.getMessages(
-                        loginUser.id(),
+                        loginUser,
                         roomId,
                         query.getBeforeMessageId(),
                         query.getSize()

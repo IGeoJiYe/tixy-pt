@@ -57,10 +57,15 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                 Long memberId = jwtTokenProvider.getMemberId(token);
                 String role = jwtTokenProvider.getRole(token);
 
+                String resolvedRole = StringUtils.hasText(role) ? role : "ROLE_USER";
+
                 Authentication authentication = new UsernamePasswordAuthenticationToken(
-                        LoginUserInfoDto.builder().id(memberId).build(),
+                        LoginUserInfoDto.builder()
+                                .id(memberId)
+                                .role(resolvedRole)
+                                .build(),
                         null,
-                        Collections.singletonList(new SimpleGrantedAuthority(StringUtils.hasText(role) ? role : "ROLE_USER"))
+                        Collections.singletonList(new SimpleGrantedAuthority(resolvedRole))
                 );
 
                 SecurityContextHolder.getContext().setAuthentication(authentication);

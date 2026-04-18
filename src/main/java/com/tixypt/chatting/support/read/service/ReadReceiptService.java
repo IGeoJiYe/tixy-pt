@@ -1,7 +1,5 @@
 package com.tixypt.chatting.support.read.service;
 
-import com.tixypt.api.member.entity.Member;
-import com.tixypt.api.member.service.MemberService;
 import com.tixypt.chatting.support.entity.SupportRoom;
 import com.tixypt.chatting.support.exception.SupportRoomErrorCode;
 import com.tixypt.chatting.support.exception.SupportRoomException;
@@ -11,6 +9,7 @@ import com.tixypt.chatting.support.read.dto.event.ReadReceiptEvent;
 import com.tixypt.chatting.support.read.dto.event.UnreadCountSyncEvent;
 import com.tixypt.chatting.support.room.repository.SupportRoomRepository;
 import com.tixypt.chatting.support.websocket.SupportEventDispatcher;
+import com.tixypt.core.security.dto.LoginUserInfoDto;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -24,13 +23,12 @@ public class ReadReceiptService {
 
     private final SupportRoomRepository supportRoomRepository;
     private final SupportMessageRepository supportMessageRepository;
-    private final MemberService memberService;
     private final SupportEventDispatcher supportEventDispatcher;
 
     // 읽음 위치를 문의방에 반영한다
     @Transactional
     public void markAsRead(
-            Long loginUserId,
+            LoginUserInfoDto loginUser,
             String userName,
             Long roomId,
             Long lastReadMessageId
@@ -39,7 +37,6 @@ public class ReadReceiptService {
             throw new SupportRoomException(SupportRoomErrorCode.INVALID_READ_RECEIPT);
         }
 
-        Member loginUser = memberService.findById(loginUserId);
         SupportRoom room = supportRoomRepository.findByIdForUpdate(roomId)
                 .orElseThrow(() -> new SupportRoomException(SupportRoomErrorCode.ROOM_NOT_FOUND));
 
@@ -72,8 +69,8 @@ public class ReadReceiptService {
 
         ReadReceiptEvent roomEvent = new ReadReceiptEvent(
                 roomId,
-                loginUserId,
-                loginUser.getRole().name(),
+                loginUser.id(),
+                loginUser.role(),
                 effectiveLastReadMessageId,
                 effectiveReadAt
         );
@@ -97,13 +94,13 @@ public class ReadReceiptService {
     }
 
     // 현재 사용자가 읽지 않은 메시지 수 다시 계산
-    private long unreadCount(SupportRoom room, Member loginUser) {
+    private long unreadCount(SupportRoom room, LoginUserInfoDto loginUser) {
         if (SupportAccessPolicy.isCounselor(loginUser)) {
             long lastReadMessageId = room.getCounselorLastReadMessageId() == null ? 0L : room.getCounselorLastReadMessageId();
-            return supportMessageRepository.countUnreadForCounselor(room.getId(), lastReadMessageId, loginUser.getId());
+            return supportMessageRepository.countUnreadForCounselor(room.getId(), lastReadMessageId, loginUser.id());
         }
 
         long lastReadMessageId = room.getCustomerLastReadMessageId() == null ? 0L : room.getCustomerLastReadMessageId();
-        return supportMessageRepository.countUnreadForCustomer(room.getId(), lastReadMessageId, loginUser.getId());
+        return supportMessageRepository.countUnreadForCustomer(room.getId(), lastReadMessageId, loginUser.id());
     }
 }

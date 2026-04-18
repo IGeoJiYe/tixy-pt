@@ -17,7 +17,7 @@ import org.springframework.web.bind.annotation.*;
 @RequestMapping("/api/admin/support/v1")
 public class AdminRoomController {
 
-    private final AdminRoomService adminSupportRoomService;
+    private final AdminRoomService adminRoomService;
 
     // 운영자 화면에서 아직 누구도 맡지 않은 OPEN 문의방 대기열 조회
     @GetMapping("/queue")
@@ -26,7 +26,7 @@ public class AdminRoomController {
             @Valid @ModelAttribute RoomPageRequest query
     ) {
         return ApiResponse.success(
-                adminSupportRoomService.getQueueRooms(loginUser.id(), query.getPage(), query.getSize())
+                adminRoomService.getQueueRooms(loginUser, query.getPage(), query.getSize())
         );
     }
 
@@ -37,7 +37,7 @@ public class AdminRoomController {
             @Valid @ModelAttribute RoomPageRequest query
     ) {
         return ApiResponse.success(
-                adminSupportRoomService.getClosedRooms(loginUser.id(), query.getPage(), query.getSize())
+                adminRoomService.getClosedRooms(loginUser, query.getPage(), query.getSize())
         );
     }
 
@@ -48,7 +48,7 @@ public class AdminRoomController {
             @Valid @ModelAttribute RoomPageRequest query
     ) {
         return ApiResponse.success(
-                adminSupportRoomService.getStaleRooms(loginUser.id(), query.getPage(), query.getSize())
+                adminRoomService.getStaleRooms(loginUser, query.getPage(), query.getSize())
         );
     }
 
@@ -58,7 +58,7 @@ public class AdminRoomController {
             @LoginUser LoginUserInfoDto loginUser,
             @PathVariable Long roomId
     ) {
-        return ApiResponse.success(adminSupportRoomService.claimRoom(loginUser.id(), roomId));
+        return ApiResponse.success(adminRoomService.claimRoom(loginUser, roomId));
     }
 
     // 현재 운영자가 맡고 있는 문의방을 다시 대기열 상태로 되돌림. 이미 미배정 상태인 경우에는 추가 변경 없이 처리
@@ -67,21 +67,7 @@ public class AdminRoomController {
             @LoginUser LoginUserInfoDto loginUser,
             @PathVariable Long roomId
     ) {
-        return ApiResponse.success(adminSupportRoomService.releaseRoom(loginUser.id(), roomId));
-    }
-
-    // 현재 배정된 문의방을 다른 상담사에게 강제로 재배정
-    @PostMapping("/rooms/{roomId}/reassign")
-    public ApiResponse<ReassignRoomResponse> reassignRoom(
-            @LoginUser LoginUserInfoDto loginUser,
-            @PathVariable Long roomId,
-            @RequestBody ReassignRoomRequest request
-    ) {
-        return ApiResponse.success(adminSupportRoomService.reassignRoom(
-                loginUser.id(),
-                roomId,
-                request == null ? null : request.targetCounselorUserId()
-        ));
+        return ApiResponse.success(adminRoomService.releaseRoom(loginUser, roomId));
     }
 
     @PostMapping("/rooms/{roomId}/solve")
@@ -89,7 +75,7 @@ public class AdminRoomController {
             @LoginUser LoginUserInfoDto loginUser,
             @PathVariable Long roomId
     ) {
-        return ApiResponse.success(adminSupportRoomService.solveRoom(loginUser.id(), roomId));
+        return ApiResponse.success(adminRoomService.solveRoom(loginUser, roomId));
     }
 
     // 상담사가 문의방을 종료 상태로 바꿈
@@ -98,6 +84,6 @@ public class AdminRoomController {
             @LoginUser LoginUserInfoDto loginUser,
             @PathVariable Long roomId
     ) {
-        return ApiResponse.success(adminSupportRoomService.closeRoom(loginUser.id(), roomId));
+        return ApiResponse.success(adminRoomService.closeRoom(loginUser, roomId));
     }
 }

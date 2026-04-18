@@ -1,6 +1,5 @@
 package com.tixypt.chatting.support.ai.service;
 
-import com.tixypt.api.member.service.MemberService;
 import com.tixypt.chatting.support.ai.config.AiProperties;
 import com.tixypt.chatting.support.ai.model.AiPromptContext;
 import com.tixypt.chatting.support.ai.model.AiReplyDraft;

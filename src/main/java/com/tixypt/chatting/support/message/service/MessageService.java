@@ -1,7 +1,5 @@
 package com.tixypt.chatting.support.message.service;
 
-import com.tixypt.api.member.entity.Member;
-import com.tixypt.api.member.service.MemberService;
 import com.tixypt.chatting.support.ai.dto.event.AiReplyRequestEvent;
 import com.tixypt.chatting.support.entity.SupportMessage;
 import com.tixypt.chatting.support.enums.SupportMessageSenderType;
@@ -16,6 +14,7 @@ import com.tixypt.chatting.support.message.repository.SupportMessageRepository;
 import com.tixypt.chatting.support.policy.SupportAccessPolicy;
 import com.tixypt.chatting.support.room.repository.SupportRoomRepository;
 import com.tixypt.chatting.support.websocket.SupportEventDispatcher;
+import com.tixypt.core.security.dto.LoginUserInfoDto;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.data.domain.PageRequest;
@@ -42,19 +41,17 @@ public class MessageService {
     private final SupportRoomRepository supportRoomRepository;
     private final SupportMessageRepository supportMessageRepository;
     private final SystemMessageService systemMessageService;
-    private final MemberService memberService;
     private final SupportEventDispatcher supportEventDispatcher;
     private final ApplicationEventPublisher applicationEventPublisher;
 
 
     // 최신 메시지부터 커서 기반으로 조회
     public MessageCursorResponse getMessages(
-            Long loginUserId,
+            LoginUserInfoDto loginUser,
             Long roomId,
             Long beforeMessageId,
             Integer size
     ) {
-        Member loginUser = memberService.findById(loginUserId);
         SupportRoom room = supportRoomRepository.findById(roomId)
                 .orElseThrow(() -> new SupportRoomException(SupportRoomErrorCode.ROOM_NOT_FOUND));
 
@@ -84,14 +81,14 @@ public class MessageService {
 
     //문의방에 새 메시지 저장하고 고객이 SOLVED 상태에서 다시 메시지를 보내면 다시 OPEN으로 되돌림
     @Transactional
-    public MessageEvent sendMessage(Long loginUserId, Long roomId, String content) {
-        Member loginUser = memberService.findById(loginUserId);
+    public void sendMessage(LoginUserInfoDto loginUser, Long roomId, String content) {
         SupportRoom room = supportRoomRepository.findByIdForUpdate(roomId)
                 .orElseThrow(() -> new SupportRoomException(SupportRoomErrorCode.ROOM_NOT_FOUND));
 
         SupportAccessPolicy.validateRoomAccess(loginUser, room);
         SupportAccessPolicy.validateRoomWritable(room);
         SupportAccessPolicy.validateParticipantWritable(loginUser);
+
         boolean reopened = reopenSolvedRoomIfNeeded(loginUser, room);
 
         if (SupportAccessPolicy.isCounselor(loginUser)) {
@@ -105,14 +102,14 @@ public class MessageService {
         String normalizedContent = normalizeContent(content);
 
         SupportMessage savedMessage = supportMessageRepository.save(
-                SupportMessage.text(room, loginUserId, senderType(loginUser), normalizedContent)
+                SupportMessage.text(room, loginUser.id(), senderType(loginUser), normalizedContent)
         );
 
         room.updateLastMessage(savedMessage.getId(), savedMessage.getCreatedAt());
+
         MessageEvent event = MessageEvent.from(savedMessage);
         supportEventDispatcher.dispatchMessageAfterCommit(event);
         publishAiReplyRequestIfNeeded(loginUser, room, savedMessage);
-        return event;
     }
 
 
@@ -139,7 +136,7 @@ public class MessageService {
     }
 
     // 고객이 SOLVED 문의방에 다시 메시지를 보냈으면 OPEN으로 되돌림
-    private boolean reopenSolvedRoomIfNeeded(Member loginUser, SupportRoom room) {
+    private boolean reopenSolvedRoomIfNeeded(LoginUserInfoDto loginUser, SupportRoom room) {
         if (!isCounselor(loginUser) && room.getStatus() == SupportRoomStatus.SOLVED) {
             return room.reopen();
         }
@@ -147,14 +144,14 @@ public class MessageService {
     }
 
     // 현재 로그인 사용자를 메시지 senderType으로 변환
-    private SupportMessageSenderType senderType(Member loginUser) {
+    private SupportMessageSenderType senderType(LoginUserInfoDto loginUser) {
         return isCounselor(loginUser)
                 ? SupportMessageSenderType.COUNSELOR
                 : SupportMessageSenderType.USER;
     }
 
     // 고객 메시지 저장 완료 뒤에 자동 ai 응답이 필요한 경우에 내부 이벤트
-    private void publishAiReplyRequestIfNeeded(Member loginUser, SupportRoom room, SupportMessage savedMessage) {
+    private void publishAiReplyRequestIfNeeded(LoginUserInfoDto loginUser, SupportRoom room, SupportMessage savedMessage) {
         if (SupportAccessPolicy.isCounselor(loginUser)) {
             return;
         }

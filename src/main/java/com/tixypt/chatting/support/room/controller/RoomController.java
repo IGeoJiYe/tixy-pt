@@ -27,7 +27,7 @@ public class RoomController {
     ) {
         // 고객 입장에서는 무조건 새 방 생성보다 지금 대화할 문의방 확보에 가까우니까 항상 공통 성공 응답
         // 기존 OPEN 방 재사용 여부는 payload의 created 값으로 구분
-        return ApiResponse.success(roomService.createRoom(loginUser.id()));
+        return ApiResponse.success(roomService.createRoom(loginUser));
     }
 
     @PostMapping("/{roomId}/counselor-request")
@@ -35,7 +35,7 @@ public class RoomController {
             @LoginUser LoginUserInfoDto loginUser,
             @PathVariable Long roomId
     ) {
-        return ApiResponse.success(roomService.requestCounselor(loginUser.id(), roomId));
+        return ApiResponse.success(roomService.requestCounselor(loginUser, roomId));
     }
 
     @GetMapping("/me")
@@ -43,7 +43,7 @@ public class RoomController {
             @LoginUser LoginUserInfoDto loginUser,
             @Valid @ModelAttribute RoomPageRequest query
     ) {
-        return ApiResponse.success(roomService.getMyRooms(loginUser.id(), query.getPage(), query.getSize()));
+        return ApiResponse.success(roomService.getMyRooms(loginUser, query.getPage(), query.getSize()));
     }
 
     @GetMapping("/{roomId}")
@@ -51,6 +51,6 @@ public class RoomController {
             @LoginUser LoginUserInfoDto loginUser,
             @PathVariable Long roomId
     ) {
-        return ApiResponse.success(roomService.getRoomDetail(loginUser.id(), roomId));
+        return ApiResponse.success(roomService.getRoomDetail(loginUser, roomId));
     }
 }

@@ -5,6 +5,7 @@ import com.tixypt.chatting.support.exception.SupportRoomException;
 import com.tixypt.chatting.support.read.dto.request.ReadReceiptRequest;
 import com.tixypt.chatting.support.read.service.ReadReceiptService;
 import com.tixypt.chatting.support.websocket.auth.SupportStompPrincipal;
+import com.tixypt.core.security.dto.LoginUserInfoDto;
 import lombok.RequiredArgsConstructor;
 import org.springframework.messaging.handler.annotation.DestinationVariable;
 import org.springframework.messaging.handler.annotation.MessageMapping;
@@ -26,15 +27,19 @@ public class ReadReceiptController {
             ReadReceiptRequest request,
             Principal principal
     ) {
-        // 읽음 이벤트도 메시지 전송이랑 똑같이 Principal에서 로그인 사용자 꺼내고 서비스에 위임
         SupportStompPrincipal supportPrincipal = SupportStompPrincipal.from(principal);
 
         if (request == null || request.lastReadMessageId() == null) {
             throw new SupportRoomException(SupportRoomErrorCode.INVALID_READ_RECEIPT);
         }
 
-        readReceiptService.markAsRead(
+        LoginUserInfoDto loginUser = new LoginUserInfoDto(
                 supportPrincipal.getUserId(),
+                supportPrincipal.getRole()
+        );
+
+        readReceiptService.markAsRead(
+                loginUser,
                 supportPrincipal.getName(),
                 roomId,
                 request.lastReadMessageId()

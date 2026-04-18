@@ -171,16 +171,6 @@ public class SupportRoom extends BaseEntity {
         return true;
     }
 
-    public void forceAssignCounselor(Long counselorUserId, LocalDateTime activeAt) {
-        // 재배정 할 때 현재 담당자랑 마지막 담당 이력을 새 삳담원으로 함께 맞춤
-        this.counselorUserId = counselorUserId;
-        this.lastCounselorUserId = counselorUserId;
-        this.counselorLastReadMessageId = null;
-        this.counselorLastReadAt = null;
-        this.counselorLastActiveAt = activeAt;
-        this.customerRequestedCounselorAt = null;
-    }
-
     // 문의방을 최종 종료 상태로 바꿈
     // 이미 CLOSED라면 중복 종료 막고 종료 직전 담당 상담원을 마지막 담당 이력으로 남김
     public boolean close() {

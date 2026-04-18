@@ -17,7 +17,10 @@ public enum SupportRoomErrorCode implements ErrorCode {
     INVALID_MESSAGE_PAGE_SIZE(HttpStatus.BAD_REQUEST, "SR006", "유효하지 않은 메시지 조회 크기입니다."),
     INVALID_ROOM_ASSIGNMENT(HttpStatus.BAD_REQUEST, "SR007", "유효하지 않은 문의방 배정 요청입니다."),
     INVALID_READ_RECEIPT(HttpStatus.BAD_REQUEST, "SR008", "유요하지 않은 읽음 처리 요청입니다."),
-    AI_REPLY_BLOCKED_BY_COUNSELOR_REQUEST(HttpStatus.CONFLICT, "SR009", "상담원 연결 요청이 접수된 문의방에서는 AI 선응답을 생성할 수 없습니다.");
+    AI_REPLY_BLOCKED_BY_COUNSELOR_REQUEST(HttpStatus.CONFLICT, "SR009", "상담원 연결 요청이 접수된 문의방에서는 AI 선응답을 생성할 수 없습니다."),
+    ROOM_CREATION_IN_PROGRESS(HttpStatus.CONFLICT, "SR010", "문의방 생성 요청이 처리 중입니다. 잠시 후 다시 시도해 주세요.");
+
+
 
     private final HttpStatus status;
     private final String code;
