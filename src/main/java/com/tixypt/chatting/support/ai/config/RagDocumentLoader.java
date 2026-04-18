@@ -11,7 +11,7 @@ import java.io.UncheckedIOException;
 import java.nio.charset.StandardCharsets;
 import java.util.*;
 
-// RAG에 사용할 로컬 문서를 읽어서 Spring AI Document로 바꾼다
+// RAG에 사용할 로컬 문서를 읽어서 Spring AI Document로 바꿔 주는 로더
 // 문서 로딩이랑 벡터를 쌓는 책임을 분리해 두고 나중에 다른 문서로 바뀌어도 이것만 교체하거나 확장하면 됨
 @Component
 @RequiredArgsConstructor
@@ -37,11 +37,7 @@ public class RagDocumentLoader {
         }
     }
 
-    public int count() {
-        return load().size();
-    }
-
-    // 실제 리소스 탐색이랑 Document 변환
+    // 실제 리소스를 찾아서 Document 변환
     private List<Document> loadDocuments() {
         return Arrays.stream(resolveResources())
                 .filter(Resource::exists)

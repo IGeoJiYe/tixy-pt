@@ -9,7 +9,6 @@ import org.springframework.ai.chat.client.advisor.vectorstore.QuestionAnswerAdvi
 import org.springframework.ai.chat.model.ChatModel;
 import org.springframework.ai.document.Document;
 import org.springframework.ai.embedding.EmbeddingModel;
-import org.springframework.ai.ollama.OllamaChatModel;
 import org.springframework.ai.openai.OpenAiChatModel;
 import org.springframework.ai.vectorstore.SearchRequest;
 import org.springframework.ai.vectorstore.SimpleVectorStore;
@@ -21,6 +20,12 @@ import org.springframework.context.annotation.Configuration;
 
 import java.util.List;
 
+// 문의 채팅 ai에서 사용하는 spring ai 조립하는 지즘
+// 이 클래스는 직접 응답을 생성하지 않고 응답 생성에 필요한 걸 스프링 빈으로 준비한다
+// 1. 로컬 정책 문서를 담아 둘 VectorStore
+// 2. 질문과 관련 있는 문서를 프롬프트에 붙이는 Advisor
+// 3. OpenAI ChatModel 위에 system prompt랑 advisor를 올린 ChatClient
+// 문서를 읽어서 벡터로 적재하고 -> 필요하면 검색해서 붙이고 -> 그 상태로 모델을 호출하는 게 RAG 흐름
 @Slf4j
 @Configuration
 @RequiredArgsConstructor
@@ -62,55 +67,43 @@ public class AiAdvisorConfig {
                 .build();
     }
 
-    // OpenAi/Ollama 공통 ChatClient를 만드는 팩토리를 빈으로 등록한다
+    // 실제 provider가 사용할 ChatClient 팩토리를 만든다
+    // provider 쪽은 openAI 전용 ChatClient를 달라고 요청을 하고
+    // system 프롬프트와 advisor를 어떻게 조립할 건지는 이 팩토리가 맡음
     @Bean
-    SupportAiChatClientFactory supportAiChatClientFactory(
+    AiChatClientFactory aiChatClientFactory(
             ObjectProvider<OpenAiChatModel> openAiChatModelProvider,
-            ObjectProvider<OllamaChatModel> ollamaChatModelProvider,
             ObjectProvider<Advisor> advisorProvider
     ) {
-        return new SupportAiChatClientFactory(
-                openAiChatModelProvider,
-                ollamaChatModelProvider,
-                advisorProvider,
-                aiProperties
-        );
+        return new AiChatClientFactory(openAiChatModelProvider, advisorProvider, aiProperties);
     }
 
-    // provider별 ChatModel을 받아서 실제 호출 가능한 chatClient로 바꿔 주는 팩토리
-    public static class SupportAiChatClientFactory {
+    // openai ChatClient를 필요 시점에 조립해 주는 팩토리
+    public static class AiChatClientFactory {
 
         private final ObjectProvider<OpenAiChatModel> openAiChatModelProvider;
-        private final ObjectProvider<OllamaChatModel> ollamaChatModelProvider;
         private final ObjectProvider<Advisor> advisorProvider;
         private final AiProperties aiProperties;
 
-        public SupportAiChatClientFactory(
+        public AiChatClientFactory(
                 ObjectProvider<OpenAiChatModel> openAiChatModelProvider,
-                ObjectProvider<OllamaChatModel> ollamaChatModelProvider,
                 ObjectProvider<Advisor> advisorProvider,
                 AiProperties aiProperties
         ) {
             this.openAiChatModelProvider = openAiChatModelProvider;
-            this.ollamaChatModelProvider = ollamaChatModelProvider;
             this.advisorProvider = advisorProvider;
             this.aiProperties = aiProperties;
         }
 
-        // OpenAi ChatModel이 준비된 경우에 ChatClient 반환
+        // openai용 ChatClient를 반환
+        // openai chatModel 빈이 아예 준비되지 않은 경우에는 null 반환
+        // 만약에 null이면 지금 openai 쓸 수 없다고 판단하고 fallback 흐름으로 간다
         public ChatClient openAiClient() {
             return build(openAiChatModelProvider.getIfAvailable());
         }
 
-        public ChatClient ollamaClient() {
-            return build(ollamaChatModelProvider.getIfAvailable());
-        }
-
-
-        // ChatClient를 조립하는 공통 메서트
-        // defaultSystem: 모델이 매번 같은 서비스 원칙으로 답하도록 하는 공통 정책 문구
-        // defaultAdvisors: RAG가 켜져 있으면 검색 기반 참고 문맥을 자동으로 붙이는 거
-        // AI에게 항상 지켜야 할 말투/원칙을 먼저 알려 주고 -> 필요하면 관련 문서를 옆에 붙여 준 다음 -> 그 상태로 모델을 호출하는 준비 과정
+        // 공통 시스템 프롬프트와 선택적으로 advisor를 붙여서 최종으로 ChatClient를 만든다
+        // RAG가 꺼져 있으면 시스템 프롬프트만 붙고 켜져 있으면 advisor까지 같이 붙음
         private ChatClient build(ChatModel chatModel) {
             if (chatModel == null) {
                 return null;
@@ -125,9 +118,8 @@ public class AiAdvisorConfig {
                     builder.defaultAdvisors(advisor);
                 }
             }
+
             return builder.build();
         }
-
-
     }
 }

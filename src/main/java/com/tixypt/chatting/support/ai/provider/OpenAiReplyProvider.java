@@ -1,6 +1,6 @@
 package com.tixypt.chatting.support.ai.provider;
 
-import com.tixypt.chatting.support.ai.config.AiAdvisorConfig.SupportAiChatClientFactory;
+import com.tixypt.chatting.support.ai.config.AiAdvisorConfig.AiChatClientFactory;
 import com.tixypt.chatting.support.ai.model.AiPromptContext;
 import com.tixypt.chatting.support.ai.model.AiReplyDraft;
 import lombok.RequiredArgsConstructor;
@@ -12,7 +12,7 @@ import org.springframework.stereotype.Component;
 @RequiredArgsConstructor
 public class OpenAiReplyProvider implements AiReplyProvider {
 
-    private final SupportAiChatClientFactory supportAiChatClientFactory;
+    private final AiChatClientFactory aiChatClientFactory;
     private final ChatClientReplyExecutor chatClientReplyExecutor;
 
     @Value("${spring.ai.openai.chat.api-key:${spring.ai.openai.api-key:}}")
@@ -23,15 +23,9 @@ public class OpenAiReplyProvider implements AiReplyProvider {
         return chatClientReplyExecutor.execute(
                 "OpenAI",
                 promptContext,
-                supportAiChatClientFactory::openAiClient,
+                aiChatClientFactory::openAiClient,
                 openAiApiKey
         );
     }
 
-    public boolean isAvailable() {
-        return chatClientReplyExecutor.isAvailable(
-                supportAiChatClientFactory::openAiClient,
-                openAiApiKey
-        );
-    }
 }

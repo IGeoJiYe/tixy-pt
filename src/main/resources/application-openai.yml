@@ -3,20 +3,19 @@ spring:
     model:
       chat: ${SPRING_AI_MODEL_CHAT:openai}
       embedding: ${SPRING_AI_MODEL_EMBEDDING:openai}
-      image: none
-      moderation: none
+      image: ${SPRING_AI_MODEL_IMAGE:none}
+      moderation: ${SPRING_AI_MODEL_MODERATION:none}
       audio:
-        speech: none
-        transcription: none
+        speech: ${SPRING_AI_MODEL_AUDIO_SPEECH:none}
+        transcription: ${SPRING_AI_MODEL_AUDIO_TRANSCRIPTION:none}
     openai:
-      chat:
-        base-url: ${OPENAI_CHAT_BASE_URL:}
-        options:
-          model: ${OPENAI_CHAT_MODEL:}
+      api-key: ${OPENAI_API_KEY:}
       embedding:
+        api-key: ${OPENAI_EMBEDDING_API_KEY:${OPENAI_API_KEY:}}
         options:
           model: ${OPENAI_EMBEDDING_MODEL:text-embedding-3-small}
-
-support:
-  ai:
-    provider: ${SUPPORT_AI_PROVIDER:openai}
+      chat:
+        api-key: ${OPENAI_CHAT_API_KEY:${OPENAI_API_KEY:}}
+        base-url: ${OPENAI_CHAT_BASE_URL:}
+        options:
+          model: ${OPENAI_CHAT_MODEL:gpt-5.4-mini}

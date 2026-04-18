@@ -19,28 +19,24 @@ public class AiReplyProviderRouter implements AiReplyProvider {
 
     private final AiProperties aiProperties;
     private final PolicyBasedReplyProvider policyBasedReplyProvider;
-    private final AiReplyProviderRegistry aiReplyProviderRegistry;
+    private final OpenAiReplyProvider openAiReplyProvider;
 
     @Override
     public AiReplyDraft generate(AiPromptContext promptContext) {
         return switch (aiProperties.getMode()) {
             case POLICY -> policyBasedReplyProvider.generate(promptContext);
-            case PROVIDER -> generateWithSelectedProvider(promptContext);
+            case PROVIDER -> openAiReplyProvider.generate(promptContext);
             case HYBRID -> generateHybrid(promptContext);
         };
     }
 
     // 하이브리드 모드는 ai 응답을 먼저 시도하긴 하지만 실패하면 정책 응답으로 감
     private AiReplyDraft generateHybrid(AiPromptContext promptContext) {
-        AiReplyDraft providerAnswer = generateWithSelectedProvider(promptContext);
+        AiReplyDraft providerAnswer = openAiReplyProvider.generate(promptContext);
         if (isUsable(providerAnswer)) {
             return providerAnswer;
         }
         return policyBasedReplyProvider.generate(promptContext);
-    }
-
-    private AiReplyDraft generateWithSelectedProvider(AiPromptContext promptContext) {
-        return aiReplyProviderRegistry.generate(aiProperties.getProvider(), promptContext);
     }
 
     // provider 응답이 실제 서비스에 써도 되는 최소 조건만 판단 내용이 비어 있거나 fallback 표시 있으면 빽

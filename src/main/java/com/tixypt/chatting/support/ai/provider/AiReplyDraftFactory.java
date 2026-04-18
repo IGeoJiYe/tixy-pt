@@ -78,6 +78,7 @@ public class AiReplyDraftFactory {
         return content.substring(0, maxCharacters).trim();
     }
 
+    // 프롬프트가 응답에 그대로 섞인 건 아닌지 확인한다
     private boolean containsPromptMarker(String content) {
         for (String promptMarker : PROMPT_MARKERS) {
             if (content.contains(promptMarker)) {

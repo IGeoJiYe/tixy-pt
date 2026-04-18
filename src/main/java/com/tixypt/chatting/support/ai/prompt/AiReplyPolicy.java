@@ -6,7 +6,7 @@ public class AiReplyPolicy {
     // 규칙 기반 선응답 문구와 키워드 정책
     // Spring AI provider가 완전히 꺼져 있더라도 고객 화면 흐름은 유지
     public static final String FALLBACK_REPLY =
-            "문의 내용을 확인하고 있어요. 주문 번호나 현재 상황을 조금 더 자세히 적어 주시면 상담원이 이어서 빠르게 안내해 드릴게요.";
+            "문의 내용을 확인하고 있어요. 주문 번호나 상황을 조금 더 자세히 알려 주시면 상담원이 이어서 안내해 드릴게요.";
     public static final String EMPTY_CUSTOMER_MESSAGE_REPLY =
             "문의 내용을 확인하고 있어요. 주문 번호와 상황을 조금 더 자세히 알려 주시면 상담원이 이어서 안내해 드릴게요.";
     public static final String REFUND_REPLY =

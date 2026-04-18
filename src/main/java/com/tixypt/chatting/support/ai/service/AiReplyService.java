@@ -21,6 +21,7 @@ import com.tixypt.chatting.support.websocket.SupportEventDispatcher;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.support.TransactionOperations;
 
@@ -47,7 +48,7 @@ public class AiReplyService {
     // 1. 현재 방 접근/상태를 잠금 없이 먼저 검증을 하고
     // 2. 최근 대화로 프롬프트를 만든 뒤에 ai 호출하고
     // 마지막 저장에서만 짧게 락 잡아서 ai 메시지 반영
-    @Transactional
+    @Transactional(propagation = Propagation.NOT_SUPPORTED)
     public AiReplyResponse createAiReply(Long loginUserId, Long roomId) {
         Member loginUser = memberService.findById(loginUserId);
         SupportRoom room = getRoomOrThrow(roomId);
@@ -61,6 +62,9 @@ public class AiReplyService {
         return transactionOperations.execute(status -> saveAiReply(loginUser, roomId, answer));
     }
 
+    // 모델 응답을 실제 ai 메시지로 저장
+    // 응답을 기다리는 종안 방 상태가 바뀔 수 있기 때문에 저장 직전에 방을 다시 조회하고 다시 한 번 검증을 한다
+    // 예를 들어서 이미 상담원이 배정되었거나 방이 종료되었으면 더 이상 ai 메시지를 넣으면 안 됨
     private AiReplyResponse saveAiReply(Member loginUser, Long roomId, AiReplyDraft answer) {
         SupportRoom room = supportRoomRepository.findByIdForUpdate(roomId)
                 .orElseThrow(() -> new SupportRoomException(SupportRoomErrorCode.ROOM_NOT_FOUND));
@@ -81,6 +85,8 @@ public class AiReplyService {
         return new AiReplyResponse(event, answer.fallback());
     }
 
+    // ai 응답 생성 전에 필요한 공통 검증
+    // 접근 권한, 방 쓰기 가능한지, 사용자 역할, 상담원 요청 상태 확인
     private void validateAiReplyRequest(Member loginUser, SupportRoom room) {
         SupportAccessPolicy.validateRoomAccess(loginUser, room);
         SupportAccessPolicy.validateRoomWritable(room);
@@ -88,6 +94,8 @@ public class AiReplyService {
         validateAiReplyAllowed(room);
     }
 
+
+    // 문의방 조회하고 없으면 예외
     private SupportRoom getRoomOrThrow(Long roomId) {
         return supportRoomRepository.findById(roomId)
                 .orElseThrow(() -> new SupportRoomException(SupportRoomErrorCode.ROOM_NOT_FOUND));
@@ -116,6 +124,7 @@ public class AiReplyService {
                         .orElse(null));
     }
 
+    // 상담원 연결 요청이 접수된 방에는 ai 응답을 막음
     private void validateAiReplyAllowed(SupportRoom room) {
         if (room.getCustomerRequestedCounselorAt() != null && room.getCounselorUserId() == null) {
             throw new SupportRoomException(SupportRoomErrorCode.AI_REPLY_BLOCKED_BY_COUNSELOR_REQUEST);

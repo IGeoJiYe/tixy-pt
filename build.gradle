@@ -40,9 +40,8 @@ dependencies {
     implementation 'org.springframework.boot:spring-boot-starter-security'
     implementation 'org.springframework.boot:spring-boot-starter-websocket'
 
-    // Spring AI OpenAI/Ollama 모델 연동
+    // Spring AI OpenAI 모델 연동
     implementation 'org.springframework.ai:spring-ai-starter-model-openai'
-    implementation 'org.springframework.ai:spring-ai-starter-model-ollama'
     implementation 'org.springframework.ai:spring-ai-vector-store'
     implementation 'org.springframework.ai:spring-ai-advisors-vector-store'
 
