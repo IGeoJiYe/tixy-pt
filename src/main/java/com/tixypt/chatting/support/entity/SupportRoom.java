@@ -11,7 +11,39 @@ import lombok.NoArgsConstructor;
 import java.time.LocalDateTime;
 
 @Entity
-@Table(name = "support_rooms")
+@Table(
+        name = "support_rooms",
+        indexes = {
+                @Index(
+                        name = "idx_support_rooms_customer_last_message_id",
+                        columnList = "customer_user_id, last_message_at, id"
+                ),
+                @Index(
+                        name = "idx_support_rooms_counselor_status_last_message_id",
+                        columnList = "counselor_user_id, status, last_message_at, id"
+                ),
+                @Index(
+                        name = "idx_support_rooms_queue_request_id",
+                        columnList = "status, counselor_user_id, customer_requested_counselor_at, id"
+                ),
+                @Index(
+                        name = "idx_support_rooms_status_counselor_last_active_at_id",
+                        columnList = "status, counselor_last_active_at, id"
+                ),
+                @Index(
+                        name = "idx_support_rooms_last_counselor_status_updated_at_id",
+                        columnList = "last_counselor_user_id, status, updated_at, id"
+                ),
+                @Index(
+                        name = "idx_support_rooms_customer_status_id",
+                        columnList = "customer_user_id, status, id"
+                ),
+                @Index(
+                        name = "idx_support_rooms_status_solved_at_id",
+                        columnList = "status, solved_at, id"
+                )
+        }
+)
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 public class SupportRoom extends BaseEntity {
