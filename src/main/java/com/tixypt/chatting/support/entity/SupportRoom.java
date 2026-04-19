@@ -27,14 +27,6 @@ import java.time.LocalDateTime;
                         columnList = "status, counselor_user_id, customer_requested_counselor_at, id"
                 ),
                 @Index(
-                        name = "idx_support_rooms_status_counselor_last_active_at_id",
-                        columnList = "status, counselor_last_active_at, id"
-                ),
-                @Index(
-                        name = "idx_support_rooms_last_counselor_status_updated_at_id",
-                        columnList = "last_counselor_user_id, status, updated_at, id"
-                ),
-                @Index(
                         name = "idx_support_rooms_customer_status_id",
                         columnList = "customer_user_id, status, id"
                 ),

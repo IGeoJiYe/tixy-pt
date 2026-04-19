@@ -75,6 +75,7 @@ public class AdminRoomService {
 
     // 대기열 문의방을 현재 운영자에게 선점 배정
     // 이미 본인이 맡은 방이면 false 반환해서 멱등하게 처리하고 다른 운영자가 맡은 방이면 접근을 막음
+    @Transactional
     public ClaimRoomResponse claimRoom(LoginUserInfoDto loginUser, Long roomId) {
         SupportAccessPolicy.validateCounselor(loginUser);
 
