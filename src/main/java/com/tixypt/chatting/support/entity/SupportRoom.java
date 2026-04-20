@@ -16,19 +16,23 @@ import java.time.LocalDateTime;
         indexes = {
                 @Index(
                         name = "idx_support_rooms_customer_last_message_id",
-                        columnList = "customer_user_id, last_message_at, id"
+                        columnList = "customer_user_id, last_message_at DESC, id DESC"
                 ),
                 @Index(
                         name = "idx_support_rooms_counselor_status_last_message_id",
-                        columnList = "counselor_user_id, status, last_message_at, id"
+                        columnList = "counselor_user_id, status, last_message_at DESC, id DESC"
                 ),
                 @Index(
                         name = "idx_support_rooms_queue_request_id",
                         columnList = "status, counselor_user_id, customer_requested_counselor_at, id"
                 ),
                 @Index(
-                        name = "idx_support_rooms_customer_status_id",
-                        columnList = "customer_user_id, status, id"
+                        name = "idx_support_rooms_status_counselor_active_id",
+                        columnList = "status, counselor_last_active_at, id"
+                ),
+                @Index(
+                        name = "idx_support_rooms_last_counselor_status_id",
+                        columnList = "last_counselor_user_id, status, id"
                 ),
                 @Index(
                         name = "idx_support_rooms_status_solved_at_id",
@@ -129,13 +133,19 @@ public class SupportRoom extends BaseEntity {
     }
 
     public static SupportRoom open(Long customerUserId, Long counselorUserId) {
-        // 문의방 생성 때 기본 상태는 open, counselorUserId가 함께 들어오면 생성과 동시에 담당 배정된 방으로 봄
         return SupportRoom.builder()
                 .customerUserId(customerUserId)
                 .counselorUserId(counselorUserId)
                 .lastCounselorUserId(counselorUserId)
                 .status(SupportRoomStatus.OPEN)
                 .build();
+    }
+
+    @PrePersist
+    private void initializeLastMessageAt() {
+        if (this.lastMessageAt == null) {
+            this.lastMessageAt = LocalDateTime.now();
+        }
     }
 
     public void touchCounselorActivity(LocalDateTime activeAt) {
@@ -211,10 +221,10 @@ public class SupportRoom extends BaseEntity {
         return true;
     }
 
+    // 방 목록 정렬이랑 미리보기에 쓰는 마지막 메시지 정보를 함께 갱신
     public void updateLastMessage(Long lastMessageId, LocalDateTime lastMessageAt) {
-        // 방 목록 정렬이랑 미리보기에 쓰는 마지막 메시지 정보를 함께 갱신
         this.lastMessageId = lastMessageId;
-        this.lastMessageAt = lastMessageAt;
+        this.lastMessageAt = lastMessageAt == null ? LocalDateTime.now() : lastMessageAt;
     }
 
     public boolean markCounselorRead(Long lastReadMessageId, LocalDateTime readAt) {

@@ -117,7 +117,6 @@
         releaseRoomButton: document.getElementById("release-room-button"),
         solveRoomButton: document.getElementById("solve-room-button"),
         closeRoomButton: document.getElementById("close-room-button"),
-        reassignRoomButton: document.getElementById("reassign-room-button"),
         loadOlderButton: document.getElementById("load-older-button"),
         messageEmptyState: document.getElementById("message-empty-state"),
         messageStream: document.getElementById("message-stream"),
@@ -134,8 +133,6 @@
         detailCreatedAt: document.getElementById("detail-created-at"),
         detailUpdatedAt: document.getElementById("detail-updated-at"),
         operatorCard: document.getElementById("operator-card"),
-        reassignField: document.getElementById("reassign-field"),
-        reassignTargetUserIdInput: document.getElementById("reassign-target-user-id-input"),
         operatorHint: document.getElementById("operator-hint"),
         activityFeed: document.getElementById("activity-feed")
     };
@@ -176,7 +173,6 @@
         elements.releaseRoomButton.addEventListener("click", releaseRoom);
         elements.solveRoomButton.addEventListener("click", solveRoom);
         elements.closeRoomButton.addEventListener("click", closeRoom);
-        elements.reassignRoomButton.addEventListener("click", reassignRoom);
         elements.loadOlderButton.addEventListener("click", loadOlderMessages);
         elements.messageForm.addEventListener("submit", handleMessageSubmit);
         elements.messageInput.addEventListener("keydown", handleComposerKeydown);
@@ -739,39 +735,6 @@
             scheduleRoomListRefresh();
         } catch (error) {
             pushActivity("error", "문의 종료에 실패했습니다.", safe(error.message));
-        }
-    }
-
-    async function reassignRoom() {
-        if (state.mode !== "super_admin") {
-            pushActivity("error", "재배정은 운영 관리자 모드에서만 열어 둡니다.", "");
-            return;
-        }
-
-        if (!state.activeRoomId) {
-            pushActivity("error", "먼저 방을 선택해 주세요.", "");
-            return;
-        }
-
-        const targetUserId = parsePositiveNumber(elements.reassignTargetUserIdInput.value);
-        if (!targetUserId) {
-            pushActivity("error", "재배정 대상 상담원 ID가 필요합니다.", "");
-            return;
-        }
-
-        try {
-            await requestJson(
-                CONTRACT.adminApiPrefix + "/rooms/" + state.activeRoomId + "/reassign",
-                "방 재배정",
-                {
-                    method: "POST",
-                    body: JSON.stringify({ targetCounselorUserId: targetUserId })
-                }
-            );
-            await refreshActiveRoom(false);
-            scheduleRoomListRefresh();
-        } catch (error) {
-            pushActivity("error", "방 재배정에 실패했습니다.", safe(error.message));
         }
     }
 
@@ -1343,7 +1306,6 @@
         toggleAction(elements.releaseRoomButton, canReleaseRoom());
         toggleAction(elements.solveRoomButton, canSolveRoom());
         toggleAction(elements.closeRoomButton, canCloseRoom());
-        toggleAction(elements.reassignRoomButton, canReassignRoom());
     }
 
     function renderComposer() {
@@ -1373,10 +1335,9 @@
     function renderOperatorCard() {
         const visible = state.mode === "admin" || state.mode === "super_admin";
         elements.operatorCard.hidden = !visible;
-        elements.reassignField.classList.toggle("is-hidden", state.mode !== "super_admin");
         elements.operatorHint.textContent = state.mode === "super_admin"
-            ? "SUPER_ADMIN은 전체 조회와 재배정·강제 종료 같은 운영 조치를 맡고, 일반 상담 메시지나 읽음 처리에는 참여하지 않습니다."
-            : "ADMIN은 대기열에서 claim한 방에 한해 실제 상담에 참여하고, 상담이 끝나면 해결 처리만 수행합니다. queue 방은 claim 전까지 읽기 전용 미리보기 없이 유지합니다.";
+            ? "SUPER_ADMIN은 전체 조회와 종료, 배정 해제 같은 운영 제어만 담당하고 직접 상담 메시지에는 참여하지 않습니다."
+            : "ADMIN은 대기열에서 claim 한 문의방에 참여해 상담을 진행하고, 필요 시 배정 해제와 해결 처리까지 담당합니다.";
     }
 
     function renderActivityFeed() {
@@ -1920,14 +1881,6 @@
         return state.mode === "super_admin"
             && !!state.activeRoomId
             && !!state.activeRoom
-            && String(state.activeRoom.status) !== "CLOSED";
-    }
-
-    function canReassignRoom() {
-        return state.mode === "super_admin"
-            && !!state.activeRoomId
-            && !!state.activeRoom
-            && state.activeRoom.counselorUserId != null
             && String(state.activeRoom.status) !== "CLOSED";
     }
 

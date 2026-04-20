@@ -53,7 +53,7 @@ public class RoomService {
         return roomCreationLockService.withCustomerRoomCreationLock(
                 loginUser.id(),
                 () -> supportRoomRepository
-                        .findTopByCustomerUserIdAndStatusInOrderByIdDesc(loginUser.id(), ACTIVE_ROOM_STATUSES)
+                        .findFirstByCustomerUserIdAndStatusInOrderByLastMessageAtDescIdDesc(loginUser.id(), ACTIVE_ROOM_STATUSES)
                         .map(existingRoom -> new CreateRoomResponse(existingRoom.getId(), false))
                         .orElseGet(() -> createNewOpenRoom(loginUser.id()))
         );

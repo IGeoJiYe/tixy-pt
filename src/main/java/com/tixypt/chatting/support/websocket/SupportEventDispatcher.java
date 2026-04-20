@@ -16,7 +16,7 @@ import org.springframework.transaction.support.TransactionSynchronizationManager
 @RequiredArgsConstructor
 public class SupportEventDispatcher {
 
-    private final SupportStompEventBroadCaster supportStompEventBroadCaster;
+    private final SupportStompEventBroadcaster supportStompEventBroadcaster;
     private final ObjectProvider<SupportRedisEventPublisher> supportRedisEventPublisherProvider;
 
     // 가능한 경우 레디스 펍섭으로 먼저 시도하고
@@ -24,7 +24,7 @@ public class SupportEventDispatcher {
     public void dispatchMessage(MessageEvent event) {
         SupportRedisEventPublisher publisher = supportRedisEventPublisherProvider.getIfAvailable();
         if (publisher == null) {
-            supportStompEventBroadCaster.broadcastMessage(event);
+            supportStompEventBroadcaster.broadcastMessage(event);
             return;
         }
 
@@ -32,7 +32,7 @@ public class SupportEventDispatcher {
             publisher.publish(SupportRedisEvent.message(event));
         } catch (RuntimeException exception) {
             log.warn("문의 채팅 메시지 Redis 발행에 실패해 로컬 브로드캐스트로 전환합니다.");
-            supportStompEventBroadCaster.broadcastMessage(event);
+            supportStompEventBroadcaster.broadcastMessage(event);
         }
     }
 
@@ -74,7 +74,7 @@ public class SupportEventDispatcher {
     public void dispatchQueueEvent(RoomQueueEvent event) {
         SupportRedisEventPublisher publisher = supportRedisEventPublisherProvider.getIfAvailable();
         if (publisher == null) {
-            supportStompEventBroadCaster.broadcastQueue(event);
+            supportStompEventBroadcaster.broadcastQueue(event);
             return;
         }
 
@@ -82,7 +82,7 @@ public class SupportEventDispatcher {
             publisher.publish(SupportRedisEvent.queue(event));
         } catch (RuntimeException exception) {
             log.warn("지원 채팅 queue 이벤트 Redis 발행에 실패해 로컬 브로드캐스트로 전환합니다.");
-            supportStompEventBroadCaster.broadcastQueue(event);
+            supportStompEventBroadcaster.broadcastQueue(event);
         }
     }
 
@@ -96,8 +96,8 @@ public class SupportEventDispatcher {
             ReadReceiptEvent roomEvent,
             UnreadCountSyncEvent userEvent
     ) {
-        supportStompEventBroadCaster.broadcastReadRoom(roomEvent);
-        supportStompEventBroadCaster.broadcastReadUser(userName, userEvent);
+        supportStompEventBroadcaster.broadcastReadRoom(roomEvent);
+        supportStompEventBroadcaster.broadcastReadUser(userName, userEvent);
     }
 
     private void runAfterCommit(Runnable task) {

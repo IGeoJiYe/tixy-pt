@@ -10,7 +10,7 @@ import org.springframework.stereotype.Component;
 
 @Component
 @RequiredArgsConstructor
-public class SupportStompEventBroadCaster {
+public class SupportStompEventBroadcaster {
 
     private final SimpMessagingTemplate messagingTemplate;
 

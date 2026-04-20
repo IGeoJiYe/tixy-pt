@@ -1,6 +1,5 @@
 package com.tixypt.chatting.support.room.controller;
 
-import com.tixypt.chatting.support.room.dto.request.ReassignRoomRequest;
 import com.tixypt.chatting.support.room.dto.request.RoomPageRequest;
 import com.tixypt.chatting.support.room.dto.response.*;
 import com.tixypt.chatting.support.room.service.AdminRoomService;

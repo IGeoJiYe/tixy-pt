@@ -19,7 +19,7 @@ import java.util.Optional;
 public interface SupportRoomRepository extends JpaRepository<SupportRoom, Long> {
 
     // 고객에게 아직 끝나지 않은 문의가 있으면 OPEN/SOLVED 방을 가장 최근 순으로 다시 찾음
-    Optional<SupportRoom> findTopByCustomerUserIdAndStatusInOrderByIdDesc(
+    Optional<SupportRoom> findFirstByCustomerUserIdAndStatusInOrderByLastMessageAtDescIdDesc(
             Long customerUserId,
             Collection<SupportRoomStatus> statuses
     );
@@ -38,7 +38,7 @@ public interface SupportRoomRepository extends JpaRepository<SupportRoom, Long> 
             select room
             from SupportRoom room
             where room.customerUserId = :customerUserId
-            order by coalesce(room.lastMessageAt, room.createdAt) desc, room.id desc
+            order by room.lastMessageAt desc, room.id desc
             """)
     Slice<SupportRoom> findRoomsForCustomer(@Param("customerUserId") Long customerUserId, Pageable pageable);
 
@@ -51,7 +51,7 @@ public interface SupportRoomRepository extends JpaRepository<SupportRoom, Long> 
                     com.tixypt.chatting.support.enums.SupportRoomStatus.OPEN,
                     com.tixypt.chatting.support.enums.SupportRoomStatus.SOLVED
               )
-            order by coalesce(room.lastMessageAt, room.createdAt) desc, room.id desc
+            order by room.lastMessageAt desc, room.id desc
             """)
     Slice<SupportRoom> findAssignedRoomsForCounselor(@Param("counselorUserId") Long counselorUserId, Pageable pageable);
 
@@ -68,17 +68,18 @@ public interface SupportRoomRepository extends JpaRepository<SupportRoom, Long> 
 
 
     // 아직 상담원이 배정되지 않은 OPEN 문의방만 운영 대기열로 조회
+
     @Query("""
-            select room
-            from SupportRoom room
-            where room.counselorUserId is null
-              and room.status = com.tixypt.chatting.support.enums.SupportRoomStatus.OPEN
-            order by
-                case when room.customerRequestedCounselorAt is null then 1 else 0 end asc,
-                room.customerRequestedCounselorAt asc,
-                coalesce(room.lastMessageAt, room.createdAt) desc,
-                room.id desc
-            """)
+        select room
+        from SupportRoom room
+        where room.counselorUserId is null
+          and room.status = com.tixypt.chatting.support.enums.SupportRoomStatus.OPEN
+        order by
+            case when room.customerRequestedCounselorAt is null then 1 else 0 end asc,
+            room.customerRequestedCounselorAt asc,
+            room.lastMessageAt desc,
+            room.id desc
+        """)
     Slice<SupportRoom> findUnassignedOpenRooms(Pageable pageable);
 
 

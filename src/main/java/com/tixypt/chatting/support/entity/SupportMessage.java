@@ -17,7 +17,6 @@ import java.time.LocalDateTime;
         name = "support_messages",
         indexes = {
                 @Index(name = "idx_support_messages_room_id_id", columnList = "room_id,id"),
-                @Index(name = "idx_support_messages_room_id_sender_type_id", columnList = "room_id,sender_type,id")
         }
 )
 @Getter

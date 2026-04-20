@@ -18,7 +18,7 @@ import tools.jackson.databind.ObjectMapper;
 public class SupportRedisEventSubscriber implements MessageListener {
 
     private final ObjectMapper objectMapper;
-    private final SupportStompEventBroadCaster supportStompEventBroadCaster;
+    private final SupportStompEventBroadcaster supportStompEventBroadcaster;
 
     // Redis에서 받은 raw bytes를 SupportRedisEvent로 역직렬화한 뒤에 타입에 맞게 다시 로컬 브로드캐스터로 전달
     @Override
@@ -34,17 +34,17 @@ public class SupportRedisEventSubscriber implements MessageListener {
     // Redis 공통 이벤트를 실제 payload 타입으로 바꿔서 최종 전달은 로컬 broadcaster가 맡도록 함
     private void dispatch(SupportRedisEvent event) {
         switch (event.type()) {
-            case MESSAGE -> supportStompEventBroadCaster.broadcastMessage(
+            case MESSAGE -> supportStompEventBroadcaster.broadcastMessage(
                     objectMapper.convertValue(event.payload(), MessageEvent.class)
             );
-            case READ_ROOM -> supportStompEventBroadCaster.broadcastReadRoom(
+            case READ_ROOM -> supportStompEventBroadcaster.broadcastReadRoom(
                     objectMapper.convertValue(event.payload(), ReadReceiptEvent.class)
             );
-            case READ_USER -> supportStompEventBroadCaster.broadcastReadUser(
+            case READ_USER -> supportStompEventBroadcaster.broadcastReadUser(
                     event.targetUserName(),
                     objectMapper.convertValue(event.payload(), UnreadCountSyncEvent.class)
             );
-            case QUEUE -> supportStompEventBroadCaster.broadcastQueue(
+            case QUEUE -> supportStompEventBroadcaster.broadcastQueue(
                     objectMapper.convertValue(event.payload(), RoomQueueEvent.class)
             );
         }
