@@ -13,7 +13,7 @@ import org.springframework.web.bind.annotation.*;
 
 @RestController
 @RequiredArgsConstructor
-@RequestMapping("/api/admin/support/v1")
+@RequestMapping("/tixypt/api/admin/support/v1")
 public class AdminRoomController {
 
     private final AdminRoomService adminRoomService;

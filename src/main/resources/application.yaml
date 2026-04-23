@@ -17,7 +17,7 @@ spring:
     open-in-view: false
     database-platform: org.hibernate.dialect.MySQLDialect
     hibernate:
-      ddl-auto: create
+      ddl-auto: update
     properties:
       hibernate:
         format_sql: false
@@ -40,6 +40,11 @@ spring:
       audio:
         speech: none
         transcription: none
+  jackson:
+    time-zone: Asia/Seoul
+    datatype:
+      datetime:
+        WRITE_DATES_AS_TIMESTAMPS: false
 
 jwt:
   secret-key: ${JWT_SECRET_KEY}

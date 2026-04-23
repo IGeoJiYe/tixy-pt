@@ -16,7 +16,7 @@ import org.springframework.web.bind.annotation.*;
 
 @RestController
 @RequiredArgsConstructor
-@RequestMapping("/api/support/v1/rooms")
+@RequestMapping("/tixypt/api/support/v1/rooms")
 public class RoomController {
 
     private final RoomService roomService;
