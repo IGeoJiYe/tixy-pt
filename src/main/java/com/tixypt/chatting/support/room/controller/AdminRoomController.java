@@ -13,13 +13,13 @@ import org.springframework.web.bind.annotation.*;
 
 @RestController
 @RequiredArgsConstructor
-@RequestMapping("/api/admin/support/v1")
+@RequestMapping("/api/admin/support")
 public class AdminRoomController {
 
     private final AdminRoomService adminRoomService;
 
     // 운영자 화면에서 아직 누구도 맡지 않은 OPEN 문의방 대기열 조회
-    @GetMapping("/queue")
+    @GetMapping("/v1/queue")
     public ApiResponse<SliceResponse<RoomSummaryResponse>> getQueueRooms(
             @LoginUser LoginUserInfoDto loginUser,
             @Valid @ModelAttribute RoomPageRequest query
@@ -30,7 +30,7 @@ public class AdminRoomController {
     }
 
     // 운영자가 자신이 마지막으로 처리한 종료 문의방 이력 조회
-    @GetMapping("/rooms/closed")
+    @GetMapping("/v1/rooms/closed")
     public ApiResponse<SliceResponse<RoomSummaryResponse>> getClosedRooms(
             @LoginUser LoginUserInfoDto loginUser,
             @Valid @ModelAttribute RoomPageRequest query
@@ -41,7 +41,7 @@ public class AdminRoomController {
     }
 
     // SUPER_ADMIN 전용 조회: 장기 미응답 방 조회
-    @GetMapping("/rooms/stale")
+    @GetMapping("/v1/rooms/stale")
     public ApiResponse<SliceResponse<RoomSummaryResponse>> getStaleRooms(
             @LoginUser LoginUserInfoDto loginUser,
             @Valid @ModelAttribute RoomPageRequest query
@@ -52,7 +52,7 @@ public class AdminRoomController {
     }
 
     // 대기열의 문의방을 배정
-    @PostMapping("/rooms/{roomId}/claim")
+    @PostMapping("/v1/rooms/{roomId}/claim")
     public ApiResponse<ClaimRoomResponse> claimRoom(
             @LoginUser LoginUserInfoDto loginUser,
             @PathVariable Long roomId
@@ -61,7 +61,7 @@ public class AdminRoomController {
     }
 
     // 현재 운영자가 맡고 있는 문의방을 다시 대기열 상태로 되돌림. 이미 미배정 상태인 경우에는 추가 변경 없이 처리
-    @PostMapping("/rooms/{roomId}/release")
+    @PostMapping("/v1/rooms/{roomId}/release")
     public ApiResponse<ReleaseRoomResponse> releaseRoom(
             @LoginUser LoginUserInfoDto loginUser,
             @PathVariable Long roomId
@@ -69,7 +69,7 @@ public class AdminRoomController {
         return ApiResponse.success(adminRoomService.releaseRoom(loginUser, roomId));
     }
 
-    @PostMapping("/rooms/{roomId}/solve")
+    @PostMapping("/v1/rooms/{roomId}/solve")
     public ApiResponse<SolveRoomResponse> solveRoom(
             @LoginUser LoginUserInfoDto loginUser,
             @PathVariable Long roomId
@@ -78,7 +78,7 @@ public class AdminRoomController {
     }
 
     // 상담사가 문의방을 종료 상태로 바꿈
-    @PostMapping("/rooms/{roomId}/close")
+    @PostMapping("/v1/rooms/{roomId}/close")
     public ApiResponse<CloseRoomResponse> closeRoom(
             @LoginUser LoginUserInfoDto loginUser,
             @PathVariable Long roomId
