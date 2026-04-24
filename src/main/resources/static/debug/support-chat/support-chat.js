@@ -1,11 +1,11 @@
 (function () {
     const CONTRACT = {
-        endpoint: "/ws/support",
-        publishPrefix: "/pub/support/v1",
-        subscribePrefix: "/sub/support/v1",
-        userQueuePrefix: "/user/queue/support/v1",
-        supportApiPrefix: "/api/support/v1",
-        adminApiPrefix: "/api/admin/support/v1"
+        endpoint: "/tixypt/ws/support",
+        publishPrefix: "/tixypt/pub/support/v1",
+        subscribePrefix: "/tixypt/sub/support/v1",
+        userQueuePrefix: "/tixypt/user/queue/support/v1",
+        supportApiPrefix: "/tixypt/api/support/v1",
+        adminApiPrefix: "/tixypt/api/admin/support/v1"
     };
 
     const STOMP_SUBPROTOCOLS = ["v12.stomp", "v11.stomp", "v10.stomp"];
