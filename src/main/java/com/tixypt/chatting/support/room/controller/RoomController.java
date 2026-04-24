@@ -16,12 +16,12 @@ import org.springframework.web.bind.annotation.*;
 
 @RestController
 @RequiredArgsConstructor
-@RequestMapping("/tixypt/api/support/v1/rooms")
+@RequestMapping("/tixypt/api/support")
 public class RoomController {
 
     private final RoomService roomService;
 
-    @PostMapping
+    @PostMapping("/v1/rooms")
     public ApiResponse<CreateRoomResponse> createRoom(
             @LoginUser LoginUserInfoDto loginUser
     ) {
@@ -30,7 +30,7 @@ public class RoomController {
         return ApiResponse.success(roomService.createRoom(loginUser));
     }
 
-    @PostMapping("/{roomId}/counselor-request")
+    @PostMapping("/v1/rooms/{roomId}/counselor-request")
     public ApiResponse<RequestCounselorResponse> requestCounselor(
             @LoginUser LoginUserInfoDto loginUser,
             @PathVariable Long roomId
@@ -38,7 +38,7 @@ public class RoomController {
         return ApiResponse.success(roomService.requestCounselor(loginUser, roomId));
     }
 
-    @GetMapping("/me")
+    @GetMapping("/v1/rooms/me")
     public ApiResponse<SliceResponse<RoomSummaryResponse>> getMyRooms(
             @LoginUser LoginUserInfoDto loginUser,
             @Valid @ModelAttribute RoomPageRequest query
@@ -46,7 +46,7 @@ public class RoomController {
         return ApiResponse.success(roomService.getMyRooms(loginUser, query.getPage(), query.getSize()));
     }
 
-    @GetMapping("/{roomId}")
+    @GetMapping("/v1/rooms/{roomId}")
     public ApiResponse<RoomDetailResponse> getRoomDetail(
             @LoginUser LoginUserInfoDto loginUser,
             @PathVariable Long roomId

@@ -12,13 +12,13 @@ import org.springframework.web.bind.annotation.*;
 
 @RestController
 @RequiredArgsConstructor
-@RequestMapping("/tixypt/api/support/v1/rooms")
+@RequestMapping("/tixypt/api/support")
 public class MessageQueryController {
 
     private final MessageService messageService;
 
     // 문의방 메시지 이력을 커서 기반으로 조회
-    @GetMapping("/{roomId}/messages")
+    @GetMapping("/v1/rooms/{roomId}/messages")
     public ApiResponse<MessageCursorResponse> getRoomMessages(
             @LoginUser LoginUserInfoDto loginUser,
             @PathVariable Long roomId,
