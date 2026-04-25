@@ -3,7 +3,7 @@ name: Deploy Tixypt
 # main 브랜치 push 또는 PR
 on:
   push:
-    branches: [main, fix/앤드파인트앞에수정]
+    branches: [main, fix/앤드포인트앞에수정]
   workflow_dispatch:
 
 permissions:
